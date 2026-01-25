@@ -1,9 +1,10 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Image, ImageSourcePropType } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/styles/commonStyles';
+import { Image, ImageSourcePropType } from 'react-native';
 
 // Helper to resolve image sources (handles both local require() and remote URLs)
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
@@ -63,11 +64,6 @@ export default function RoleSelectScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.cardContent}>
-              <Image
-                source={resolveImageSource(require('@/assets/images/558941e1-fcea-4902-9f7a-1bcb53efb327.png'))}
-                style={styles.cardImage}
-                resizeMode="cover"
-              />
               <Text style={[styles.cardTitle, { color: cardTitleColor }]}>{clientText}</Text>
               <Text style={[styles.cardDescription, { color: '#FFFFFF' }]}>
                 {clientDescription}
@@ -81,11 +77,6 @@ export default function RoleSelectScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.cardContent}>
-              <Image
-                source={resolveImageSource(require('@/assets/images/8ed562b9-80a4-40db-adf3-47198be96e31.png'))}
-                style={styles.cardImage}
-                resizeMode="contain"
-              />
               <Text style={[styles.cardTitle, { color: cardTitleColor }]}>{providerText}</Text>
               <Text style={[styles.cardDescription, { color: '#FFFFFF' }]}>
                 {providerDescription}
@@ -137,7 +128,7 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 12,
-    padding: 12,
+    padding: 20,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -146,25 +137,20 @@ const styles = StyleSheet.create({
     elevation: 4,
     width: '70%',
     maxWidth: 280,
-    minHeight: 120,
+    minHeight: 100,
   },
   cardContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardImage: {
-    width: 60,
-    height: 60,
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     marginBottom: 8,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
   cardDescription: {
-    fontSize: 12,
+    fontSize: 13,
     textAlign: 'center',
   },
 });
