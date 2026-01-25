@@ -117,10 +117,18 @@ export default function RegisterClientScreen() {
     } catch (error) {
       console.error('Client registration error:', error);
       setLoading(false);
-      Alert.alert(
-        'Registration Failed',
-        error instanceof Error ? error.message : 'Failed to register. Please try again.'
-      );
+      
+      let errorMessage = 'Failed to register. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // If it's a JSON parse error, provide more helpful message
+        if (errorMessage.includes('JSON') || errorMessage.includes('Unexpected character')) {
+          errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+        }
+      }
+      
+      Alert.alert('Registration Failed', errorMessage);
     }
   };
 

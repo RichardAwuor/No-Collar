@@ -29,7 +29,19 @@ export async function apiCall<T = any>(
       },
     });
 
-    const data = await response.json();
+    // Get the response text first to see what we're actually receiving
+    const responseText = await response.text();
+    console.log(`Raw response (${response.status}):`, responseText.substring(0, 200));
+
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse response as JSON:', parseError);
+      console.error('Response was:', responseText.substring(0, 500));
+      throw new Error(`Server returned invalid JSON. Response: ${responseText.substring(0, 100)}`);
+    }
     
     console.log(`API Response (${response.status}):`, data);
 
