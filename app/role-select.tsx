@@ -18,7 +18,6 @@ export default function RoleSelectScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const textColor = isDark ? colors.textDark : colors.text;
   const backgroundColor = '#FFFFFF'; // Always white background
 
   const handleClientSelect = () => {
@@ -38,6 +37,11 @@ export default function RoleSelectScreen() {
   const clientDescription = 'Post gigs and hire service providers';
   const providerDescription = 'Find gigs and earn money';
 
+  // Color definitions
+  const welcomeColor = colors.secondary; // Orange like logo
+  const sloganColor = colors.primary; // Blue
+  const cardTitleColor = colors.primary; // Blue for Client and Service provider
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <View style={styles.content}>
@@ -47,8 +51,8 @@ export default function RoleSelectScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={[styles.welcomeText, { color: textColor }]}>{welcomeText}</Text>
-          <Text style={[styles.sloganText, { color: textColor }]}>{sloganText}</Text>
+          <Text style={[styles.welcomeText, { color: welcomeColor }]}>{welcomeText}</Text>
+          <Text style={[styles.sloganText, { color: sloganColor }]}>{sloganText}</Text>
         </View>
 
         <View style={styles.cardsContainer}>
@@ -66,7 +70,7 @@ export default function RoleSelectScreen() {
                   color={colors.secondary}
                 />
               </View>
-              <Text style={[styles.cardTitle, { color: colors.secondary }]}>{clientText}</Text>
+              <Text style={[styles.cardTitle, { color: cardTitleColor }]}>{clientText}</Text>
               <Text style={[styles.cardDescription, { color: '#FFFFFF' }]}>
                 {clientDescription}
               </Text>
@@ -87,7 +91,7 @@ export default function RoleSelectScreen() {
                   color={colors.secondary}
                 />
               </View>
-              <Text style={[styles.cardTitle, { color: colors.secondary }]}>{providerText}</Text>
+              <Text style={[styles.cardTitle, { color: cardTitleColor }]}>{providerText}</Text>
               <Text style={[styles.cardDescription, { color: '#FFFFFF' }]}>
                 {providerDescription}
               </Text>
