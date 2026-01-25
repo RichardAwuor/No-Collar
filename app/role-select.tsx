@@ -40,7 +40,7 @@ export default function RoleSelectScreen() {
   const welcomeColor = brightOrange; // Orange like logo
   const sloganColor = colors.primary; // Blue
   const boxBackgroundColor = colors.primary; // Blue boxes
-  const boxTextColor = '#FFFFFF'; // White text
+  const boxTextColor = brightOrange; // Orange text for Client and Service provider
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
