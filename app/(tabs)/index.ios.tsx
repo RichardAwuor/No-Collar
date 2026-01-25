@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -59,13 +59,7 @@ export default function HomeScreen() {
   const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 
   // Fetch available gigs for providers
-  useEffect(() => {
-    if (isProvider && provider?.id && provider?.subscriptionStatus === 'active') {
-      fetchAvailableGigs();
-    }
-  }, [isProvider, provider?.id, provider?.subscriptionStatus]);
-
-  const fetchAvailableGigs = async () => {
+  const fetchAvailableGigs = useCallback(async () => {
     if (!provider?.id) return;
 
     setLoadingGigs(true);
@@ -85,7 +79,13 @@ export default function HomeScreen() {
     } finally {
       setLoadingGigs(false);
     }
-  };
+  }, [provider?.id, BACKEND_URL]);
+
+  useEffect(() => {
+    if (isProvider && provider?.id && provider?.subscriptionStatus === 'active') {
+      fetchAvailableGigs();
+    }
+  }, [isProvider, provider?.id, provider?.subscriptionStatus, fetchAvailableGigs]);
 
   const handlePostGig = async () => {
     console.log('Posting gig', {
@@ -359,49 +359,7 @@ export default function HomeScreen() {
             </Text>
             <TouchableOpacity
               style={[styles.button, { backgroundColor: primaryColor, marginTop: 24 }]}
-              onPress={async () => {
-                console.log('Initiating M-Pesa subscription payment');
-                
-                if (!provider?.id) {
-                  Alert.alert('Error', 'Provider not found. Please log in again.');
-                  return;
-                }
-
-                try {
-                  // In a real implementation, this would trigger M-Pesa USSD flow
-                  // For now, we'll simulate a successful payment
-                  const mockTransactionId = `MPESA${Date.now()}`;
-                  
-                  const response = await fetch(`${BACKEND_URL}/api/providers/${provider.id}/subscription`, {
-                    method: 'PUT',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      mpesaTransactionId: mockTransactionId,
-                      amount: 130,
-                    }),
-                  });
-
-                  const data = await response.json();
-                  console.log('Subscription response:', data);
-
-                  if (!response.ok) {
-                    throw new Error(data.error || 'Subscription failed');
-                  }
-
-                  Alert.alert('Success', 'Subscription activated! You can now access gigs.');
-                  
-                  // Update provider subscription status
-                  setProvider({
-                    ...provider,
-                    subscriptionStatus: data.subscriptionStatus,
-                  });
-                } catch (error) {
-                  console.error('Subscription error:', error);
-                  Alert.alert('Error', error instanceof Error ? error.message : 'Subscription failed. Please try again.');
-                }
-              }}
+              onPress={() => router.push('/subscription-payment')}
             >
               <Text style={styles.buttonText}>Subscribe Now</Text>
             </TouchableOpacity>

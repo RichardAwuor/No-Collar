@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import { useUser } from '@/contexts/UserContext';
@@ -16,13 +16,7 @@ export default function HomeScreen() {
 
   console.log('Home screen (iOS) loaded for user type:', user?.userType);
 
-  useEffect(() => {
-    if (user) {
-      fetchGigs();
-    }
-  }, [user]);
-
-  const fetchGigs = async () => {
+  const fetchGigs = useCallback(async () => {
     console.log('Fetching gigs for user:', user?.userType);
     
     // TODO: Backend Integration
@@ -31,7 +25,13 @@ export default function HomeScreen() {
     
     // Mock data for now
     setGigs([]);
-  };
+  }, [user?.userType]);
+
+  useEffect(() => {
+    if (user) {
+      fetchGigs();
+    }
+  }, [user, fetchGigs]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -291,5 +291,9 @@ const styles = StyleSheet.create({
   gigTitle: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });

@@ -1,6 +1,6 @@
 
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import React, { useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '@/contexts/UserContext';
 import { colors } from '@/styles/commonStyles';
@@ -12,20 +12,24 @@ export default function SplashScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  const navigateBasedOnUser = useCallback(() => {
+    if (user) {
+      console.log('User found, navigating to tabs');
+      router.replace('/(tabs)');
+    } else {
+      console.log('No user found, navigating to role selection');
+      router.replace('/role-select');
+    }
+  }, [user, router]);
+
   useEffect(() => {
     console.log('Splash screen loaded, checking user status');
     const timer = setTimeout(() => {
-      if (user) {
-        console.log('User found, navigating to tabs');
-        router.replace('/(tabs)');
-      } else {
-        console.log('No user found, navigating to role selection');
-        router.replace('/role-select');
-      }
+      navigateBasedOnUser();
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [user]);
+  }, [navigateBasedOnUser]);
 
   const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
