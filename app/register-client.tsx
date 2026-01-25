@@ -17,7 +17,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/styles/commonStyles';
 import { useUser } from '@/contexts/UserContext';
 import { COUNTIES, County } from '@/constants/counties';
+import { SERVICE_CATEGORIES } from '@/constants/data';
 import { IconSymbol } from '@/components/IconSymbol';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function RegisterClientScreen() {
   const router = useRouter();
@@ -32,9 +34,15 @@ export default function RegisterClientScreen() {
   const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('individual');
   const [organizationName, setOrganizationName] = useState('');
   const [selectedCounty, setSelectedCounty] = useState<County>(COUNTIES[46]); // Default to Nairobi
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [preferredStartTime, setPreferredStartTime] = useState(new Date());
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [preferredGender, setPreferredGender] = useState<'male' | 'female' | 'any'>('any');
   const [loading, setLoading] = useState(false);
   const [showCountyModal, setShowCountyModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [countySearch, setCountySearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
 
   console.log('Client registration screen loaded');
 
@@ -49,13 +57,49 @@ export default function RegisterClientScreen() {
   const emailsMatch = email.length > 0 && confirmEmail.length > 0 && email === confirmEmail;
   const emailsDontMatch = confirmEmail.length > 0 && email !== confirmEmail;
 
-  // Filter counties based on search (only by name now)
+  // Filter counties based on search
   const filteredCounties = COUNTIES.filter(county =>
     county.countyName.toLowerCase().includes(countySearch.toLowerCase())
   );
 
+  // Filter categories based on search
+  const filteredCategories = SERVICE_CATEGORIES.filter(category =>
+    category.toLowerCase().includes(categorySearch.toLowerCase())
+  );
+
+  // Format time for display
+  const formatTime = (date: Date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes < 10 ? `0${minutes}` : minutes;
+    return `${displayHours}:${displayMinutes} ${ampm}`;
+  };
+
+  const timeDisplay = formatTime(preferredStartTime);
+
+  // Toggle category selection
+  const toggleCategory = (category: string) => {
+    if (selectedCategories.includes(category)) {
+      setSelectedCategories(selectedCategories.filter(c => c !== category));
+      console.log('Category removed:', category);
+    } else {
+      setSelectedCategories([...selectedCategories, category]);
+      console.log('Category added:', category);
+    }
+  };
+
   const handleRegister = async () => {
-    console.log('Client registration initiated', { email, firstName, lastName, organizationType });
+    console.log('Client registration initiated', { 
+      email, 
+      firstName, 
+      lastName, 
+      organizationType,
+      selectedCategories,
+      preferredStartTime: timeDisplay,
+      preferredGender
+    });
 
     if (!email || !confirmEmail || !firstName || !lastName) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -86,8 +130,11 @@ export default function RegisterClientScreen() {
         email,
         firstName,
         lastName,
-        county: selectedCounty.countyCode, // ✅ FIXED: Send county CODE (e.g., "LMU", "MSA")
+        county: selectedCounty.countyCode,
         isOrganization: organizationType === 'organization',
+        serviceCategories: selectedCategories,
+        preferredStartTime: timeDisplay,
+        preferredGender: preferredGender !== 'any' ? preferredGender : undefined,
         ...(organizationType === 'organization' && organizationName ? { organizationName } : {}),
       };
 
@@ -122,7 +169,6 @@ export default function RegisterClientScreen() {
       if (error instanceof Error) {
         errorMessage = error.message;
         
-        // If it's a JSON parse error, provide more helpful message
         if (errorMessage.includes('JSON') || errorMessage.includes('Unexpected character')) {
           errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
         }
@@ -272,6 +318,132 @@ export default function RegisterClientScreen() {
             </View>
           </TouchableOpacity>
 
+          <Text style={[styles.label, { color: textColor }]}>Service Categories</Text>
+          <TouchableOpacity
+            style={[styles.countyButton, { backgroundColor: inputBg, borderColor }]}
+            onPress={() => {
+              setShowCategoryModal(true);
+              console.log('Category selection modal opened');
+            }}
+          >
+            <View style={styles.countyButtonContent}>
+              <Text style={[styles.countyButtonText, { color: textColor }]}>
+                {selectedCategories.length === 0 
+                  ? 'Select categories' 
+                  : `${selectedCategories.length} selected`}
+              </Text>
+              <IconSymbol
+                ios_icon_name="chevron.right"
+                android_material_icon_name="chevron-right"
+                size={24}
+                color={textColor}
+              />
+            </View>
+          </TouchableOpacity>
+
+          <Text style={[styles.label, { color: textColor }]}>Preferred Start Time</Text>
+          <TouchableOpacity
+            style={[styles.countyButton, { backgroundColor: inputBg, borderColor }]}
+            onPress={() => {
+              setShowTimePicker(true);
+              console.log('Time picker opened');
+            }}
+          >
+            <View style={styles.countyButtonContent}>
+              <Text style={[styles.countyButtonText, { color: textColor }]}>
+                {timeDisplay}
+              </Text>
+              <IconSymbol
+                ios_icon_name="clock"
+                android_material_icon_name="access-time"
+                size={24}
+                color={textColor}
+              />
+            </View>
+          </TouchableOpacity>
+
+          {showTimePicker && (
+            <DateTimePicker
+              value={preferredStartTime}
+              mode="time"
+              is24Hour={false}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(event, selectedDate) => {
+                setShowTimePicker(Platform.OS === 'ios');
+                if (selectedDate) {
+                  setPreferredStartTime(selectedDate);
+                  console.log('Time selected:', formatTime(selectedDate));
+                }
+              }}
+            />
+          )}
+
+          <Text style={[styles.label, { color: textColor }]}>Preferred Provider Gender</Text>
+          <View style={styles.genderGroup}>
+            <TouchableOpacity
+              style={[
+                styles.genderOption,
+                { 
+                  backgroundColor: preferredGender === 'any' ? primaryColor : inputBg,
+                  borderColor: preferredGender === 'any' ? primaryColor : borderColor,
+                }
+              ]}
+              onPress={() => {
+                setPreferredGender('any');
+                console.log('Gender preference set to: any');
+              }}
+            >
+              <Text style={[
+                styles.genderText,
+                { color: preferredGender === 'any' ? '#FFFFFF' : textColor }
+              ]}>
+                Any
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.genderOption,
+                { 
+                  backgroundColor: preferredGender === 'male' ? primaryColor : inputBg,
+                  borderColor: preferredGender === 'male' ? primaryColor : borderColor,
+                }
+              ]}
+              onPress={() => {
+                setPreferredGender('male');
+                console.log('Gender preference set to: male');
+              }}
+            >
+              <Text style={[
+                styles.genderText,
+                { color: preferredGender === 'male' ? '#FFFFFF' : textColor }
+              ]}>
+                Male
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.genderOption,
+                { 
+                  backgroundColor: preferredGender === 'female' ? primaryColor : inputBg,
+                  borderColor: preferredGender === 'female' ? primaryColor : borderColor,
+                }
+              ]}
+              onPress={() => {
+                setPreferredGender('female');
+                console.log('Gender preference set to: female');
+              }}
+            >
+              <Text style={[
+                styles.genderText,
+                { color: preferredGender === 'female' ? '#FFFFFF' : textColor }
+              ]}>
+                Female
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={[styles.button, { backgroundColor: primaryColor }]}
             onPress={handleRegister}
@@ -349,6 +521,83 @@ export default function RegisterClientScreen() {
                   <View style={styles.countyItemContent}>
                     <Text style={[styles.countyItemName, { color: textColor }]}>
                       {county.countyName}
+                    </Text>
+                    {isSelected && (
+                      <IconSymbol
+                        ios_icon_name="checkmark.circle.fill"
+                        android_material_icon_name="check-circle"
+                        size={24}
+                        color={primaryColor}
+                      />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Category Selection Modal */}
+      <Modal
+        visible={showCategoryModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: bgColor }]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: textColor }]}>Select Categories</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowCategoryModal(false);
+                setCategorySearch('');
+                console.log('Category selection modal closed');
+              }}
+            >
+              <IconSymbol
+                ios_icon_name="xmark.circle.fill"
+                android_material_icon_name="cancel"
+                size={28}
+                color={textColor}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <IconSymbol
+              ios_icon_name="magnifyingglass"
+              android_material_icon_name="search"
+              size={20}
+              color={isDark ? '#888' : '#999'}
+            />
+            <TextInput
+              style={[styles.searchInput, { color: textColor }]}
+              placeholder="Search categories..."
+              placeholderTextColor={isDark ? '#888' : '#999'}
+              value={categorySearch}
+              onChangeText={setCategorySearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <ScrollView style={styles.countyList}>
+            {filteredCategories.map((category, index) => {
+              const isSelected = selectedCategories.includes(category);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.countyItem,
+                    { borderBottomColor: borderColor },
+                    isSelected && { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : 'rgba(0, 122, 255, 0.1)' }
+                  ]}
+                  onPress={() => toggleCategory(category)}
+                >
+                  <View style={styles.countyItemContent}>
+                    <Text style={[styles.countyItemName, { color: textColor }]}>
+                      {category}
                     </Text>
                     {isSelected && (
                       <IconSymbol
@@ -443,6 +692,21 @@ const styles = StyleSheet.create({
   },
   radioLabel: {
     fontSize: 16,
+  },
+  genderGroup: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  genderOption: {
+    flex: 1,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  genderText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   countyButton: {
     borderRadius: 8,
