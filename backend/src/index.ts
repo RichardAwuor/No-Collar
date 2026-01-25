@@ -1,4 +1,5 @@
 import { createApplication } from "@specific-dev/framework";
+import { eq } from 'drizzle-orm';
 import * as schema from './db/schema.js';
 import { registerUserRoutes } from './routes/users.js';
 import { registerUploadRoutes } from './routes/uploads.js';
@@ -46,7 +47,7 @@ async function seedCounties() {
     { id: 10, code: 'MST', name: 'Marsabit' },
     { id: 11, code: 'ISO', name: 'Isiolo' },
     { id: 12, code: 'MRU', name: 'Meru' },
-    { id: 13, code: 'TKN', name: 'Tharaka-Nithi' },
+    { id: 13, code: 'TNI', name: 'Tharaka-Nithi' },
     { id: 14, code: 'EMB', name: 'Embu' },
     { id: 15, code: 'KTI', name: 'Kitui' },
     { id: 16, code: 'MCK', name: 'Machakos' },
@@ -84,15 +85,33 @@ async function seedCounties() {
   ];
 
   try {
-    // Check if counties already exist
-    const existing = await app.db.select().from(schema.counties).limit(1);
-    if (existing.length > 0) {
-      app.logger.info({}, 'Counties already seeded');
+    // Check if all counties already exist
+    const existingCounties = await app.db.select().from(schema.counties);
+    if (existingCounties.length === countiesData.length) {
+      app.logger.info({ count: existingCounties.length }, 'Counties already seeded');
       return;
     }
 
-    await app.db.insert(schema.counties).values(countiesData);
-    app.logger.info({ count: countiesData.length }, 'Counties seeded successfully');
+    // Insert counties one by one, skipping duplicates
+    let insertedCount = 0;
+    for (const county of countiesData) {
+      try {
+        // Check if this county already exists by code
+        const existing = await app.db
+          .select()
+          .from(schema.counties)
+          .where(eq(schema.counties.code, county.code));
+
+        if (existing.length === 0) {
+          await app.db.insert(schema.counties).values(county);
+          insertedCount++;
+        }
+      } catch (err) {
+        app.logger.debug({ county: county.code, err }, 'Skipping county');
+      }
+    }
+
+    app.logger.info({ inserted: insertedCount, total: countiesData.length }, 'Counties seeded successfully');
   } catch (error) {
     app.logger.error({ err: error }, 'Failed to seed counties');
   }
