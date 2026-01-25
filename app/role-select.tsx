@@ -53,18 +53,20 @@ export default function RoleSelectScreen() {
             onPress={handleClientSelect}
             activeOpacity={0.7}
           >
-            <View style={[styles.iconContainer, { backgroundColor: primaryColor }]}>
-              <IconSymbol
-                ios_icon_name="person.fill"
-                android_material_icon_name="person"
-                size={20}
-                color="#FFFFFF"
-              />
+            <View style={styles.cardContent}>
+              <View style={[styles.iconContainer, { backgroundColor: primaryColor }]}>
+                <IconSymbol
+                  ios_icon_name="person.fill"
+                  android_material_icon_name="person"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </View>
+              <Text style={[styles.cardTitle, { color: textColor }]}>I need services</Text>
+              <Text style={[styles.cardDescription, { color: textSecondaryColor }]}>
+                Post gigs and hire service providers
+              </Text>
             </View>
-            <Text style={[styles.cardTitle, { color: textColor }]}>I need services</Text>
-            <Text style={[styles.cardDescription, { color: textSecondaryColor }]}>
-              Post gigs and hire service providers
-            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -72,18 +74,20 @@ export default function RoleSelectScreen() {
             onPress={handleProviderSelect}
             activeOpacity={0.7}
           >
-            <View style={[styles.iconContainer, { backgroundColor: primaryColor }]}>
-              <IconSymbol
-                ios_icon_name="briefcase.fill"
-                android_material_icon_name="work"
-                size={20}
-                color="#FFFFFF"
-              />
+            <View style={styles.cardContent}>
+              <View style={[styles.iconContainer, { backgroundColor: primaryColor }]}>
+                <IconSymbol
+                  ios_icon_name="briefcase.fill"
+                  android_material_icon_name="work"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </View>
+              <Text style={[styles.cardTitle, { color: textColor }]}>I provide services</Text>
+              <Text style={[styles.cardDescription, { color: textSecondaryColor }]}>
+                Find gigs and earn money
+              </Text>
             </View>
-            <Text style={[styles.cardTitle, { color: textColor }]}>I provide services</Text>
-            <Text style={[styles.cardDescription, { color: textSecondaryColor }]}>
-              Find gigs and earn money
-            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -102,7 +106,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    marginBottom: -9,
+    marginBottom: 10,
     alignItems: 'center',
   },
   logo: {
@@ -138,6 +142,12 @@ const styles = StyleSheet.create({
     elevation: 4,
     width: '70%',
     maxWidth: 280,
+    minHeight: 120,
+  },
+  cardContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   iconContainer: {
     width: 40,
