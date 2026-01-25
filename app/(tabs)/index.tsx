@@ -11,6 +11,8 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
+  ImageSourcePropType,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@/contexts/UserContext';
@@ -21,6 +23,13 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { SERVICE_CATEGORIES } from '@/constants/data';
 import Constants from 'expo-constants';
+
+// Helper to resolve image sources (handles both local require() and remote URLs)
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source as ImageSourcePropType;
+}
 
 export default function HomeScreen() {
   const { user, provider } = useUser();
@@ -203,6 +212,13 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.logoHeader}>
+            <Image
+              source={resolveImageSource(require('@/assets/images/209de818-f148-4db8-af50-74bbb0761bc7.png'))}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
           <View style={styles.header}>
             <Text style={[styles.title, { color: textColor }]}>Post a Gig</Text>
             <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
@@ -376,6 +392,13 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.logoHeader}>
+            <Image
+              source={resolveImageSource(require('@/assets/images/209de818-f148-4db8-af50-74bbb0761bc7.png'))}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
           <View style={styles.header}>
             <Text style={[styles.title, { color: textColor }]}>Available Gigs</Text>
             <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
@@ -455,6 +478,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 100,
+  },
+  logoHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logo: {
+    width: 60,
+    height: 60,
   },
   header: {
     marginBottom: 24,

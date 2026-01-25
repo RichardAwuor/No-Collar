@@ -1,10 +1,17 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Image, ImageSourcePropType } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+
+// Helper to resolve image sources (handles both local require() and remote URLs)
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source as ImageSourcePropType;
+}
 
 export default function RoleSelectScreen() {
   const router = useRouter();
@@ -31,7 +38,13 @@ export default function RoleSelectScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
       <View style={styles.content}>
         <View style={styles.header}>
+          <Image
+            source={resolveImageSource(require('@/assets/images/209de818-f148-4db8-af50-74bbb0761bc7.png'))}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={[styles.title, { color: textColor }]}>Welcome to NO-COLLAR</Text>
+          <Text style={[styles.slogan, { color: primaryColor }]}>Kazi iko</Text>
           <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
             Choose how you want to use the platform
           </Text>
@@ -94,9 +107,20 @@ const styles = StyleSheet.create({
     marginBottom: 48,
     alignItems: 'center',
   },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 16,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  slogan: {
+    fontSize: 18,
+    fontStyle: 'italic',
     marginBottom: 8,
     textAlign: 'center',
   },

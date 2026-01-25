@@ -1,12 +1,19 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useUser } from '@/contexts/UserContext';
 import { colors } from '@/styles/commonStyles';
+
+// Helper to resolve image sources (handles both local require() and remote URLs)
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source as ImageSourcePropType;
+}
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -42,6 +49,14 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.logoHeader}>
+          <Image
+            source={resolveImageSource(require('@/assets/images/209de818-f148-4db8-af50-74bbb0761bc7.png'))}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
         <View style={[styles.header, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
             <Text style={styles.avatarText}>
@@ -173,6 +188,14 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 100,
     gap: 16,
+  },
+  logoHeader: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  logo: {
+    width: 60,
+    height: 60,
   },
   header: {
     padding: 24,

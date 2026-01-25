@@ -10,6 +10,8 @@ import {
   useColorScheme,
   Alert,
   Platform,
+  Image,
+  ImageSourcePropType,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +20,13 @@ import { useUser } from '@/contexts/UserContext';
 import { SERVICE_CATEGORIES } from '@/constants/data';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+
+// Helper to resolve image sources (handles both local require() and remote URLs)
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source as ImageSourcePropType;
+}
 
 export default function PostGigScreen() {
   const router = useRouter();
@@ -116,6 +125,14 @@ export default function PostGigScreen() {
       />
       <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.logoHeader}>
+            <Image
+              source={resolveImageSource(require('@/assets/images/209de818-f148-4db8-af50-74bbb0761bc7.png'))}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+
           <Text style={[styles.label, { color: textColor }]}>Service Category *</Text>
           <View style={[styles.pickerContainer, { backgroundColor: inputBg, borderColor }]}>
             <Picker
@@ -310,6 +327,14 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? 48 : 20,
     paddingBottom: 40,
     gap: 16,
+  },
+  logoHeader: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  logo: {
+    width: 60,
+    height: 60,
   },
   label: {
     fontSize: 16,

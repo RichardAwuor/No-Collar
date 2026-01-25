@@ -1,10 +1,17 @@
 
 import React, { useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image, ImageSourcePropType } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '@/contexts/UserContext';
 import { colors } from '@/styles/commonStyles';
 import { useColorScheme } from 'react-native';
+
+// Helper to resolve image sources (handles both local require() and remote URLs)
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source as ImageSourcePropType;
+}
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -38,9 +45,11 @@ export default function SplashScreen() {
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
       <View style={styles.content}>
-        <View style={[styles.logoContainer, { backgroundColor: primaryColor }]}>
-          <Text style={styles.logoText}>NC</Text>
-        </View>
+        <Image
+          source={resolveImageSource(require('@/assets/images/209de818-f148-4db8-af50-74bbb0761bc7.png'))}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={[styles.title, { color: textColor }]}>NO-COLLAR</Text>
         <Text style={[styles.slogan, { color: primaryColor }]}>Kazi iko</Text>
       </View>
@@ -57,18 +66,10 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 120,
+    height: 120,
     marginBottom: 24,
-  },
-  logoText: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   title: {
     fontSize: 32,
