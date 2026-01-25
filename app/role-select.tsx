@@ -1,0 +1,137 @@
+
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '@/styles/commonStyles';
+import { IconSymbol } from '@/components/IconSymbol';
+
+export default function RoleSelectScreen() {
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  const bgColor = isDark ? colors.backgroundDark : colors.background;
+  const textColor = isDark ? colors.textDark : colors.text;
+  const textSecondaryColor = isDark ? colors.textSecondaryDark : colors.textSecondary;
+  const cardColor = isDark ? colors.cardDark : colors.card;
+  const primaryColor = isDark ? colors.primaryDark : colors.primary;
+
+  const handleClientSelect = () => {
+    console.log('User selected Client role');
+    router.push('/register-client');
+  };
+
+  const handleProviderSelect = () => {
+    console.log('User selected Provider role');
+    router.push('/register-provider');
+  };
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: textColor }]}>Welcome to NO-COLLAR</Text>
+          <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
+            Choose how you want to use the platform
+          </Text>
+        </View>
+
+        <View style={styles.cardsContainer}>
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: cardColor }]}
+            onPress={handleClientSelect}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: primaryColor }]}>
+              <IconSymbol
+                ios_icon_name="person.fill"
+                android_material_icon_name="person"
+                size={40}
+                color="#FFFFFF"
+              />
+            </View>
+            <Text style={[styles.cardTitle, { color: textColor }]}>I need services</Text>
+            <Text style={[styles.cardDescription, { color: textSecondaryColor }]}>
+              Post gigs and hire service providers
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: cardColor }]}
+            onPress={handleProviderSelect}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: primaryColor }]}>
+              <IconSymbol
+                ios_icon_name="briefcase.fill"
+                android_material_icon_name="work"
+                size={40}
+                color="#FFFFFF"
+              />
+            </View>
+            <Text style={[styles.cardTitle, { color: textColor }]}>I provide services</Text>
+            <Text style={[styles.cardDescription, { color: textSecondaryColor }]}>
+              Find gigs and earn money
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+  },
+  header: {
+    marginBottom: 48,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  cardsContainer: {
+    gap: 20,
+  },
+  card: {
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  cardDescription: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});

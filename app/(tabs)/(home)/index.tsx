@@ -1,0 +1,295 @@
+
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { useTheme } from '@react-navigation/native';
+import { useUser } from '@/contexts/UserContext';
+import { useRouter } from 'expo-router';
+import { IconSymbol } from '@/components/IconSymbol';
+import { colors } from '@/styles/commonStyles';
+
+export default function HomeScreen() {
+  const theme = useTheme();
+  const { user, provider } = useUser();
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [gigs, setGigs] = useState<any[]>([]);
+
+  console.log('Home screen loaded for user type:', user?.userType);
+
+  useEffect(() => {
+    if (user) {
+      fetchGigs();
+    }
+  }, [user]);
+
+  const fetchGigs = async () => {
+    console.log('Fetching gigs for user:', user?.userType);
+    
+    // TODO: Backend Integration
+    // For clients: GET /api/gigs/my-gigs?clientId={user.id}
+    // For providers: GET /api/gigs/available?providerId={user.id}
+    
+    // Mock data for now
+    setGigs([]);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchGigs();
+    setRefreshing(false);
+  };
+
+  const handlePostGig = () => {
+    console.log('User tapped Post a Gig button');
+    router.push('/post-gig');
+  };
+
+  if (!user) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.title, { color: theme.colors.text }]}>
+          Please log in
+        </Text>
+      </View>
+    );
+  }
+
+  // CLIENT VIEW
+  if (user.userType === 'client') {
+    return (
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.header}>
+          <Text style={[styles.greeting, { color: theme.colors.text }]}>
+            Hello, {user.firstName}!
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
+            Ready to post a gig?
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.postButton, { backgroundColor: colors.primary }]}
+          onPress={handlePostGig}
+        >
+          <IconSymbol
+            ios_icon_name="plus.circle"
+            android_material_icon_name="add-circle"
+            size={32}
+            color="#FFFFFF"
+          />
+          <Text style={styles.postButtonText}>Post a New Gig</Text>
+        </TouchableOpacity>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Your Posted Gigs
+          </Text>
+          
+          {gigs.length === 0 ? (
+            <View style={[styles.emptyState, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+              <IconSymbol
+                ios_icon_name="briefcase"
+                android_material_icon_name="work"
+                size={48}
+                color={theme.dark ? '#666' : '#999'}
+              />
+              <Text style={[styles.emptyText, { color: theme.dark ? '#98989D' : '#666' }]}>
+                No gigs posted yet
+              </Text>
+              <Text style={[styles.emptySubtext, { color: theme.dark ? '#666' : '#999' }]}>
+                Tap the button above to post your first gig
+              </Text>
+            </View>
+          ) : (
+            <View>
+              {gigs.map((gig, index) => (
+                <View key={index} style={[styles.gigCard, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+                  <Text style={[styles.gigTitle, { color: theme.colors.text }]}>{gig.title}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // PROVIDER VIEW
+  const isSubscribed = provider?.subscriptionStatus === 'active';
+
+  return (
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={styles.header}>
+        <Text style={[styles.greeting, { color: theme.colors.text }]}>
+          Hello, {user.firstName}!
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
+          {isSubscribed ? 'Available gigs for you' : 'Subscribe to view gigs'}
+        </Text>
+      </View>
+
+      {!isSubscribed && (
+        <TouchableOpacity
+          style={[styles.subscribeCard, { backgroundColor: colors.accent }]}
+          onPress={() => router.push('/subscription-payment')}
+        >
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle"
+            android_material_icon_name="warning"
+            size={32}
+            color="#000"
+          />
+          <View style={styles.subscribeContent}>
+            <Text style={styles.subscribeTitle}>Subscription Required</Text>
+            <Text style={styles.subscribeText}>
+              Subscribe for KES 130/month to view and accept gigs
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          Available Gigs
+        </Text>
+        
+        {!isSubscribed ? (
+          <View style={[styles.emptyState, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+            <IconSymbol
+              ios_icon_name="lock"
+              android_material_icon_name="lock"
+              size={48}
+              color={theme.dark ? '#666' : '#999'}
+            />
+            <Text style={[styles.emptyText, { color: theme.dark ? '#98989D' : '#666' }]}>
+              Subscribe to view gigs
+            </Text>
+          </View>
+        ) : gigs.length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+            <IconSymbol
+              ios_icon_name="briefcase"
+              android_material_icon_name="work"
+              size={48}
+              color={theme.dark ? '#666' : '#999'}
+            />
+            <Text style={[styles.emptyText, { color: theme.dark ? '#98989D' : '#666' }]}>
+              No gigs available right now
+            </Text>
+            <Text style={[styles.emptySubtext, { color: theme.dark ? '#666' : '#999' }]}>
+              Check back later for new opportunities
+            </Text>
+          </View>
+        ) : (
+          <View>
+            {gigs.map((gig, index) => (
+              <View key={index} style={[styles.gigCard, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+                <Text style={[styles.gigTitle, { color: theme.colors.text }]}>{gig.title}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+  },
+  postButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 24,
+    gap: 12,
+  },
+  postButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  subscribeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    gap: 12,
+  },
+  subscribeContent: {
+    flex: 1,
+  },
+  subscribeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 4,
+  },
+  subscribeText: {
+    fontSize: 14,
+    color: '#000',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  emptyState: {
+    padding: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  gigCard: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  gigTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
