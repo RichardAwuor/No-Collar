@@ -42,10 +42,10 @@ export default function SplashScreen() {
   const primaryColor = isDark ? colors.primaryDark : colors.primary;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
       <View style={styles.content}>
         <Image
-          source={resolveImageSource(require('@/assets/images/209de818-f148-4db8-af50-74bbb0761bc7.png'))}
+          source={resolveImageSource(require('@/assets/images/69d714db-da7a-4d1b-93ed-6a7746771724.png'))}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -61,7 +61,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
   },
   content: {
     alignItems: 'center',

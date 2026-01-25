@@ -20,9 +20,7 @@ export default function RoleSelectScreen() {
 
   const textColor = isDark ? colors.textDark : colors.text;
   const textSecondaryColor = isDark ? colors.textSecondaryDark : colors.textSecondary;
-  const cardColor = isDark ? colors.cardDark : colors.card;
-  const primaryColor = isDark ? colors.primaryDark : colors.primary;
-  const backgroundColor = isDark ? colors.backgroundDark : colors.background;
+  const backgroundColor = '#FFFFFF'; // Always white background
 
   const handleClientSelect = () => {
     console.log('User selected Client role');
@@ -47,42 +45,42 @@ export default function RoleSelectScreen() {
 
         <View style={styles.cardsContainer}>
           <TouchableOpacity
-            style={[styles.card, { backgroundColor: cardColor }]}
+            style={[styles.card, { backgroundColor: colors.secondary }]}
             onPress={handleClientSelect}
             activeOpacity={0.7}
           >
             <View style={styles.cardContent}>
-              <View style={[styles.iconContainer, { backgroundColor: primaryColor }]}>
+              <View style={[styles.iconContainer, { backgroundColor: '#FFFFFF' }]}>
                 <IconSymbol
                   ios_icon_name="person.fill"
                   android_material_icon_name="person"
                   size={20}
-                  color="#FFFFFF"
+                  color={colors.secondary}
                 />
               </View>
-              <Text style={[styles.cardTitle, { color: textColor }]}>I need services</Text>
-              <Text style={[styles.cardDescription, { color: textSecondaryColor }]}>
+              <Text style={[styles.cardTitle, { color: '#FFFFFF' }]}>I need services</Text>
+              <Text style={[styles.cardDescription, { color: '#FFFFFF' }]}>
                 Post gigs and hire service providers
               </Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.card, { backgroundColor: cardColor }]}
+            style={[styles.card, { backgroundColor: colors.secondary }]}
             onPress={handleProviderSelect}
             activeOpacity={0.7}
           >
             <View style={styles.cardContent}>
-              <View style={[styles.iconContainer, { backgroundColor: primaryColor }]}>
+              <View style={[styles.iconContainer, { backgroundColor: '#FFFFFF' }]}>
                 <IconSymbol
                   ios_icon_name="briefcase.fill"
                   android_material_icon_name="work"
                   size={20}
-                  color="#FFFFFF"
+                  color={colors.secondary}
                 />
               </View>
-              <Text style={[styles.cardTitle, { color: textColor }]}>I provide services</Text>
-              <Text style={[styles.cardDescription, { color: textSecondaryColor }]}>
+              <Text style={[styles.cardTitle, { color: '#FFFFFF' }]}>I provide services</Text>
+              <Text style={[styles.cardDescription, { color: '#FFFFFF' }]}>
                 Find gigs and earn money
               </Text>
             </View>
