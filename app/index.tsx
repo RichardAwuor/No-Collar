@@ -38,8 +38,8 @@ export default function SplashScreen() {
     return () => clearTimeout(timer);
   }, [navigateBasedOnUser]);
 
-  const textColor = isDark ? colors.textDark : colors.text;
   const primaryColor = isDark ? colors.primaryDark : colors.primary;
+  const orangeColor = '#FF6B35';
 
   return (
     <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
@@ -49,7 +49,7 @@ export default function SplashScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={[styles.title, { color: textColor }]}>NO-COLLAR</Text>
+        <Text style={[styles.title, { color: orangeColor }]}>NO-COLLAR</Text>
         <Text style={[styles.slogan, { color: primaryColor }]}>Kazi iko</Text>
       </View>
     </View>
