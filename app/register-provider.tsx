@@ -107,7 +107,7 @@ export default function RegisterProviderScreen() {
         gender: gender.charAt(0).toUpperCase() + gender.slice(1), // Capitalize first letter
         dateOfBirth: formattedDate,
         identityNumber,
-        county: selectedCounty.countyName, // ✅ FIXED: Send only county NAME
+        county: selectedCounty.countyCode, // ✅ FIXED: Send county CODE (e.g., "LMU", "MSA")
         commuteDistance: distance,
         phoneNumber,
         services: [], // Empty array for now - can be added later
@@ -411,7 +411,7 @@ export default function RegisterProviderScreen() {
                     setSelectedCounty(county);
                     setShowCountyModal(false);
                     setCountySearch('');
-                    console.log('County selected:', county.countyName);
+                    console.log('County selected:', county.countyName, 'Code:', county.countyCode);
                   }}
                 >
                   <View style={styles.countyItemContent}>

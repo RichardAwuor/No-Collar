@@ -86,7 +86,7 @@ export default function RegisterClientScreen() {
         email,
         firstName,
         lastName,
-        county: selectedCounty.countyName, // ✅ FIXED: Send only county NAME
+        county: selectedCounty.countyCode, // ✅ FIXED: Send county CODE (e.g., "LMU", "MSA")
         isOrganization: organizationType === 'organization',
         ...(organizationType === 'organization' && organizationName ? { organizationName } : {}),
       };
@@ -335,7 +335,7 @@ export default function RegisterClientScreen() {
                     setSelectedCounty(county);
                     setShowCountyModal(false);
                     setCountySearch('');
-                    console.log('County selected:', county.countyName);
+                    console.log('County selected:', county.countyName, 'Code:', county.countyCode);
                   }}
                 >
                   <View style={styles.countyItemContent}>
