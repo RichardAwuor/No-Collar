@@ -38,12 +38,11 @@ export default function SplashScreen() {
     return () => clearTimeout(timer);
   }, [navigateBasedOnUser]);
 
-  const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
   const primaryColor = isDark ? colors.primaryDark : colors.primary;
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
+    <View style={styles.container}>
       <View style={styles.content}>
         <Image
           source={resolveImageSource(require('@/assets/images/209de818-f148-4db8-af50-74bbb0761bc7.png'))}
@@ -62,6 +61,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   content: {
     alignItems: 'center',

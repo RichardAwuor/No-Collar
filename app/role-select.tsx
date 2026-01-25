@@ -18,7 +18,6 @@ export default function RoleSelectScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
   const textSecondaryColor = isDark ? colors.textSecondaryDark : colors.textSecondary;
   const cardColor = isDark ? colors.cardDark : colors.card;
@@ -35,7 +34,7 @@ export default function RoleSelectScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
           <Image
@@ -94,6 +93,7 @@ export default function RoleSelectScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
