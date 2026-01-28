@@ -40,6 +40,8 @@ export default function SplashScreen() {
 
   const primaryColor = isDark ? colors.primaryDark : colors.primary;
   const orangeColor = '#FF6B35';
+  const appName = 'Collarless';
+  const sloganText = 'Kazi iko';
 
   return (
     <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
@@ -49,8 +51,8 @@ export default function SplashScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={[styles.title, { color: orangeColor }]}>NO-COLLAR</Text>
-        <Text style={[styles.slogan, { color: primaryColor }]}>Kazi iko</Text>
+        <Text style={[styles.title, { color: orangeColor }]}>{appName}</Text>
+        <Text style={[styles.slogan, { color: primaryColor }]}>{sloganText}</Text>
       </View>
     </View>
   );

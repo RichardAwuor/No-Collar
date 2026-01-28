@@ -30,7 +30,7 @@ export default function RoleSelectScreen() {
     router.push('/register-provider');
   };
 
-  const welcomeText = 'Welcome to No-Collar';
+  const welcomeText = 'Welcome to Collarless';
   const sloganText = 'KAZI IKO';
   const clientText = 'Client';
   const providerText = 'Service provider';
