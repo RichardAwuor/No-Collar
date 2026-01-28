@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "Collarless",
@@ -44,6 +45,5 @@
       "router": {},
       "backendUrl": "https://e5wgeerrct2a9skgegkashy679v959nx.app.specular.dev"
     }
-  },
-  "scheme": "No-Collar"
+  }
 }
