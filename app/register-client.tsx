@@ -116,9 +116,9 @@ export default function RegisterClientScreen() {
       };
 
       setUser(registeredUser);
-      console.log('Client registered successfully', registeredUser);
+      console.log('Client registered successfully, navigating to post-gig', registeredUser);
       setLoading(false);
-      router.replace('/(tabs)');
+      router.replace('/post-gig');
     } catch (error) {
       console.error('Client registration error:', error);
       setLoading(false);
