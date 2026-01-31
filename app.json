@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Collarless",
-    "slug": "Collarless",
-    "version": "1.0.0",
+    "slug": "collarless",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/5a563b48-c13f-40a2-ae16-1cc11c55e0f3.png",
     "userInterfaceStyle": "automatic",
@@ -25,7 +25,8 @@
         "backgroundColor": "#EF8E1F"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.nocollar.app"
+      "package": "com.simphoni.collarless",
+      "versionCode": 3
     },
     "web": {
       "favicon": "./assets/images/a3d3323f-a91d-414a-8257-2f65a039b9a5.png",
@@ -42,7 +43,7 @@
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://9rs686wkexp8cbxgtddvuzrpcv4x9xn8.app.specular.dev"
+      "backendUrl": "https://prod-proj-2nybuz8fbmvczltakxgen-liwg5h36mq-ey.a.run.app"
     }
   }
 }

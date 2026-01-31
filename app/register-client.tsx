@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ScrollView,
   useColorScheme,
-  Alert,
   Platform,
   Modal,
 } from 'react-native';
@@ -18,6 +17,57 @@ import { colors } from '@/styles/commonStyles';
 import { useUser } from '@/contexts/UserContext';
 import { COUNTIES, County } from '@/constants/counties';
 import { IconSymbol } from '@/components/IconSymbol';
+
+// Custom Modal for confirmations (cross-platform compatible)
+function ConfirmModal({ 
+  visible, 
+  title, 
+  message, 
+  onConfirm, 
+  onCancel 
+}: { 
+  visible: boolean; 
+  title: string; 
+  message: string; 
+  onConfirm: () => void; 
+  onCancel: () => void; 
+}) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const bgColor = isDark ? colors.backgroundDark : colors.background;
+  const textColor = isDark ? colors.textDark : colors.text;
+  const primaryColor = isDark ? colors.primaryDark : colors.primary;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.confirmModalContent, { backgroundColor: bgColor }]}>
+          <Text style={[styles.confirmModalTitle, { color: textColor }]}>{title}</Text>
+          <Text style={[styles.confirmModalMessage, { color: textColor }]}>{message}</Text>
+          <View style={styles.confirmModalButtons}>
+            <TouchableOpacity
+              style={[styles.confirmModalButton, styles.confirmModalButtonCancel]}
+              onPress={onCancel}
+            >
+              <Text style={styles.confirmModalButtonTextCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmModalButton, { backgroundColor: primaryColor }]}
+              onPress={onConfirm}
+            >
+              <Text style={styles.confirmModalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 export default function RegisterClientScreen() {
   const router = useRouter();
@@ -35,6 +85,7 @@ export default function RegisterClientScreen() {
   const [loading, setLoading] = useState(false);
   const [showCountyModal, setShowCountyModal] = useState(false);
   const [countySearch, setCountySearch] = useState('');
+  const [errorModal, setErrorModal] = useState({ visible: false, title: '', message: '' });
 
   console.log('Client registration screen loaded');
 
@@ -54,6 +105,10 @@ export default function RegisterClientScreen() {
     county.countyName.toLowerCase().includes(countySearch.toLowerCase())
   );
 
+  const showError = (title: string, message: string) => {
+    setErrorModal({ visible: true, title, message });
+  };
+
   const handleRegister = async () => {
     console.log('Client registration initiated', { 
       email, 
@@ -63,22 +118,22 @@ export default function RegisterClientScreen() {
     });
 
     if (!email || !confirmEmail || !firstName || !lastName) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      showError('Error', 'Please fill in all required fields');
       return;
     }
 
     if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showError('Error', 'Please enter a valid email address');
       return;
     }
 
     if (email !== confirmEmail) {
-      Alert.alert('Error', 'Email addresses do not match');
+      showError('Error', 'Email addresses do not match');
       return;
     }
 
     if (organizationType === 'organization' && !organizationName) {
-      Alert.alert('Error', 'Please enter your organization name');
+      showError('Error', 'Please enter your organization name');
       return;
     }
 
@@ -117,8 +172,12 @@ export default function RegisterClientScreen() {
 
       setUser(registeredUser);
       console.log('Client registered successfully, navigating to post-gig', registeredUser);
-      setLoading(false);
-      router.replace('/post-gig');
+      
+      // Use setTimeout to ensure state is updated before navigation
+      setTimeout(() => {
+        setLoading(false);
+        router.replace('/post-gig');
+      }, 100);
     } catch (error) {
       console.error('Client registration error:', error);
       setLoading(false);
@@ -132,7 +191,7 @@ export default function RegisterClientScreen() {
         }
       }
       
-      Alert.alert('Registration Failed', errorMessage);
+      showError('Registration Failed', errorMessage);
     }
   };
 
@@ -369,6 +428,15 @@ export default function RegisterClientScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Error Modal */}
+      <ConfirmModal
+        visible={errorModal.visible}
+        title={errorModal.title}
+        message={errorModal.message}
+        onConfirm={() => setErrorModal({ visible: false, title: '', message: '' })}
+        onCancel={() => setErrorModal({ visible: false, title: '', message: '' })}
+      />
     </SafeAreaView>
   );
 }
@@ -515,6 +583,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countyItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  confirmModalContent: {
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  confirmModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  confirmModalMessage: {
+    fontSize: 16,
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  confirmModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  confirmModalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  confirmModalButtonCancel: {
+    backgroundColor: '#E5E5E5',
+  },
+  confirmModalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmModalButtonTextCancel: {
+    color: '#000000',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -7,7 +7,6 @@ import { Stack } from 'expo-router';
 import {
   DarkTheme,
   DefaultTheme,
-  Theme,
   ThemeProvider,
 } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -16,7 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { WidgetProvider } from '@/contexts/WidgetContext';
 import { UserProvider } from '@/contexts/UserContext';
-import { useColorScheme, Alert } from 'react-native';
+import { useColorScheme, Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Constants from 'expo-constants';
 
 // Log backend URL on app startup
@@ -27,6 +26,43 @@ console.log('==============================');
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+// Custom Modal for network error (cross-platform compatible)
+function NetworkErrorModal({ 
+  visible, 
+  onRetry 
+}: { 
+  visible: boolean; 
+  onRetry: () => void; 
+}) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const bgColor = isDark ? '#1C1C1E' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#000000';
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+    >
+      <View style={modalStyles.overlay}>
+        <View style={[modalStyles.content, { backgroundColor: bgColor }]}>
+          <Text style={[modalStyles.title, { color: textColor }]}>No Internet Connection</Text>
+          <Text style={[modalStyles.message, { color: textColor }]}>
+            Please check your internet connection and try again.
+          </Text>
+          <TouchableOpacity
+            style={modalStyles.button}
+            onPress={onRetry}
+          >
+            <Text style={modalStyles.buttonText}>OK</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -34,20 +70,19 @@ export default function RootLayout() {
 
   const { isConnected } = useNetworkState();
   const colorScheme = useColorScheme();
+  const [showNetworkError, setShowNetworkError] = React.useState(false);
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      // Only hide splash screen when fonts are loaded
+      // The app/index.tsx will handle the final hiding after navigation
+      console.log('Fonts loaded');
     }
   }, [loaded]);
 
   useEffect(() => {
     if (isConnected === false) {
-      Alert.alert(
-        'No Internet Connection',
-        'Please check your internet connection and try again.',
-        [{ text: 'OK' }]
-      );
+      setShowNetworkError(true);
     }
   }, [isConnected]);
 
@@ -71,9 +106,56 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             </Stack>
             <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <NetworkErrorModal 
+              visible={showNetworkError} 
+              onRetry={() => setShowNetworkError(false)} 
+            />
           </WidgetProvider>
         </UserProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  content: {
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  message: {
+    fontSize: 16,
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
