@@ -157,21 +157,29 @@ export default function SubscriptionPaymentScreen() {
     console.log('Initiating M-Pesa payment for provider:', provider?.id);
 
     if (!provider || !user) {
-      Alert.alert('Error', 'User information not found');
+      showModal('Error', 'User information not found', () => setModalVisible(false), {
+        showCancel: false,
+      });
       return;
     }
 
     if (!phoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter your M-Pesa phone number');
+      showModal('Error', 'Please enter your M-Pesa phone number', () => setModalVisible(false), {
+        showCancel: false,
+      });
       return;
     }
 
     const formattedPhone = formatPhoneNumber(phoneNumber);
     
     if (!validatePhoneNumber(phoneNumber)) {
-      Alert.alert(
+      showModal(
         'Invalid Phone Number',
-        'Please enter a valid Kenyan phone number (e.g., 0712345678 or 254712345678)'
+        'Please enter a valid Kenyan phone number (e.g., 0712345678 or 254712345678)',
+        () => setModalVisible(false),
+        {
+          showCancel: false,
+        }
       );
       return;
     }
@@ -185,13 +193,31 @@ export default function SubscriptionPaymentScreen() {
       console.log('Amount: KES 130');
       console.log('Merchant: Collarless (6803513)');
 
-      const data = await apiCall('/api/mpesa/initiate', {
+      const response = await fetch(`${BACKEND_URL}/api/mpesa/initiate`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           providerId: provider.id,
           phoneNumber: formattedPhone,
         }),
       });
+
+      console.log('=== M-Pesa API Response ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+
+      const data = await response.json();
+      console.log('Response Data:', data);
+
+      if (!response.ok) {
+        // Handle error response from backend
+        const errorMsg = data.error || data.message || `API request failed with status ${response.status}`;
+        console.error('=== M-Pesa API Error ===');
+        console.error('Error:', errorMsg);
+        throw new Error(errorMsg);
+      }
 
       console.log('=== Payment Response ===');
       console.log('Success:', !!data.checkoutRequestId);
@@ -226,21 +252,9 @@ export default function SubscriptionPaymentScreen() {
       
       setLoading(false);
       
-      let errorMessage = 'Failed to initiate payment. Please try again.';
+      let errorMessage = error?.message || 'Failed to initiate payment. Please try again.';
       
-      if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      // Check for specific error types
-      if (error?.message?.includes('400')) {
-        errorMessage = 'Invalid request. Please check your phone number and try again.';
-      } else if (error?.message?.includes('401') || error?.message?.includes('403')) {
-        errorMessage = 'Authentication failed. Please contact support.';
-      } else if (error?.message?.includes('Network')) {
-        errorMessage = 'Network error. Please check your internet connection.';
-      }
-      
+      // Display the exact error from the backend/M-Pesa
       showModal('Payment Failed', errorMessage, () => setModalVisible(false), {
         showCancel: false,
       });
