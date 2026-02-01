@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Collarless",
-    "slug": "collarless",
+    "slug": "Collarless",
     "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/images/5bc95c83-9f1f-4ec4-8eef-7f8f47370c80.png",
@@ -43,7 +43,7 @@
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://prod-proj-2nybuz8fbmvczltakxgen-liwg5h36mq-ey.a.run.app"
+      "backendUrl": "https://9rs686wkexp8cbxgtddvuzrpcv4x9xn8.app.specular.dev"
     }
   }
 }
