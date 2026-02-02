@@ -254,10 +254,22 @@ export default function SubscriptionPaymentScreen() {
       
       let errorMessage = error?.message || 'Failed to initiate payment. Please try again.';
       
-      // Display the exact error from the backend/M-Pesa
-      showModal('Payment Failed', errorMessage, () => setModalVisible(false), {
-        showCancel: false,
-      });
+      // Check if it's a configuration error
+      if (errorMessage.includes('configuration incomplete') || errorMessage.includes('contact support')) {
+        showModal(
+          'Payment System Unavailable',
+          'The M-Pesa payment system is currently being configured. Please contact NO-COLLAR support or try again later.',
+          () => setModalVisible(false),
+          {
+            showCancel: false,
+          }
+        );
+      } else {
+        // Display the exact error from the backend/M-Pesa
+        showModal('Payment Failed', errorMessage, () => setModalVisible(false), {
+          showCancel: false,
+        });
+      }
     }
   };
 
