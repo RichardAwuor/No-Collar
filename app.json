@@ -1,10 +1,11 @@
+
 {
   "expo": {
     "name": "Collarless",
     "slug": "Collarless",
     "version": "1.0.6",
     "orientation": "portrait",
-    "icon": "./assets/images/5bc95c83-9f1f-4ec4-8eef-7f8f47370c80.png",
+    "icon": "./assets/images/0e1358ff-8f94-4c17-8ec6-8a78ee2589d3.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -17,19 +18,20 @@
       "bundleIdentifier": "com.nocollar.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "icon": "./assets/images/0e1358ff-8f94-4c17-8ec6-8a78ee2589d3.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/5bc95c83-9f1f-4ec4-8eef-7f8f47370c80.png",
-        "backgroundColor": "#EF8E1F"
+        "foregroundImage": "./assets/images/0e1358ff-8f94-4c17-8ec6-8a78ee2589d3.png",
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.simphoni.collarless",
       "versionCode": 7
     },
     "web": {
-      "favicon": "./assets/images/a3d3323f-a91d-414a-8257-2f65a039b9a5.png",
+      "favicon": "./assets/images/0e1358ff-8f94-4c17-8ec6-8a78ee2589d3.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -37,7 +39,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "Collarless",
+    "scheme": "collarless",
     "experiments": {
       "typedRoutes": true
     },
