@@ -285,7 +285,7 @@ export default function ProfileScreen() {
 
   if (!user) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
         <Text style={[styles.title, { color: theme.colors.text }]}>
           Please log in
         </Text>
@@ -294,7 +294,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.logoHeader}>
           <Image

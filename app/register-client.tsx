@@ -34,7 +34,6 @@ function ConfirmModal({
 }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
   const primaryColor = isDark ? colors.primaryDark : colors.primary;
 
@@ -46,7 +45,7 @@ function ConfirmModal({
       onRequestClose={onCancel}
     >
       <View style={styles.modalOverlay}>
-        <View style={[styles.confirmModalContent, { backgroundColor: bgColor }]}>
+        <View style={[styles.confirmModalContent, { backgroundColor: '#FFFFFF' }]}>
           <Text style={[styles.confirmModalTitle, { color: textColor }]}>{title}</Text>
           <Text style={[styles.confirmModalMessage, { color: textColor }]}>{message}</Text>
           <View style={styles.confirmModalButtons}>
@@ -89,10 +88,8 @@ export default function RegisterClientScreen() {
 
   console.log('Client registration screen loaded');
 
-  const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
   const primaryColor = isDark ? colors.primaryDark : colors.primary;
-  const cardColor = isDark ? colors.cardDark : colors.card;
   const borderColor = isDark ? colors.borderDark : colors.border;
   const inputBg = isDark ? colors.cardDark : colors.card;
 
@@ -196,7 +193,7 @@ export default function RegisterClientScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: textColor }]}>Client Registration</Text>
@@ -354,7 +351,7 @@ export default function RegisterClientScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowCountyModal(false)}
       >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: bgColor }]}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: '#FFFFFF' }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: textColor }]}>Select County</Text>
             <TouchableOpacity

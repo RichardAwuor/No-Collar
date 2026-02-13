@@ -37,7 +37,6 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
 
-  const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
   const textSecondaryColor = isDark ? colors.textSecondaryDark : colors.textSecondary;
   const cardColor = isDark ? colors.cardDark : colors.card;
@@ -220,7 +219,7 @@ export default function HomeScreen() {
 
   if (isClient) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]} edges={['top']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View style={styles.logoHeader}>
             <Image
@@ -258,7 +257,7 @@ export default function HomeScreen() {
               onRequestClose={() => setShowCategoryModal(false)}
             >
               <View style={styles.modalOverlay}>
-                <View style={[styles.modalContent, { backgroundColor: bgColor }]}>
+                <View style={[styles.modalContent, { backgroundColor: '#FFFFFF' }]}>
                   <View style={styles.modalHeader}>
                     <Text style={[styles.modalTitle, { color: textColor }]}>Select Service Category</Text>
                     <TouchableOpacity
@@ -517,7 +516,7 @@ export default function HomeScreen() {
 
     if (needsSubscription) {
       return (
-        <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]} edges={['top']}>
           <View style={styles.centerContent}>
             <IconSymbol
               ios_icon_name="exclamationmark.circle.fill"
@@ -543,7 +542,7 @@ export default function HomeScreen() {
     }
 
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]} edges={['top']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View style={styles.logoHeader}>
             <Image
