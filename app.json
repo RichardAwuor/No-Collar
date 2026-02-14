@@ -1,14 +1,15 @@
+
 {
   "expo": {
     "name": "Collarless",
     "slug": "collarless",
     "version": "1.0.17",
     "orientation": "portrait",
-    "icon": "./assets/images/e552cdd3-9483-4da6-b178-06617f4609bc.png",
+    "icon": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/e552cdd3-9483-4da6-b178-06617f4609bc.png",
+      "image": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -18,11 +19,11 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "icon": "./assets/images/e552cdd3-9483-4da6-b178-06617f4609bc.png"
+      "icon": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/e552cdd3-9483-4da6-b178-06617f4609bc.png",
+        "foregroundImage": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png",
         "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
@@ -30,7 +31,7 @@
       "versionCode": 18
     },
     "web": {
-      "favicon": "./assets/images/e552cdd3-9483-4da6-b178-06617f4609bc.png",
+      "favicon": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -38,7 +39,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "Collarless",
+    "scheme": "collarless",
     "experiments": {
       "typedRoutes": true
     },
