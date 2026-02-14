@@ -278,40 +278,83 @@ export default function ProfileScreen() {
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    const minsDisplay = mins.toString();
+    const secsDisplay = secs.toString().padStart(2, '0');
+    return `${minsDisplay}:${secsDisplay}`;
   };
 
   const timeDisplay = formatTime(timeRemaining);
 
   if (!user) {
+    const pleaseLoginText = 'Please log in';
     return (
       <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          Please log in
+          {pleaseLoginText}
         </Text>
       </View>
     );
   }
+
+  const firstInitial = user.firstName?.charAt(0) || 'U';
+  const lastInitial = user.lastName?.charAt(0) || 'U';
+  const fullName = `${user.firstName} ${user.lastName}`;
+  const accountTypeText = user.userType === 'client' ? 'Client' : 'Service Provider';
+  const recentGigTitle = 'Recent Gig';
+  const acceptedText = 'Accepted';
+  const openText = 'Open';
+  const gigAcceptedTitle = 'Gig Accepted!';
+  const providerLabel = 'Provider:';
+  const codeLabel = 'Code:';
+  const phoneLabel = 'Phone:';
+  const timeToSelectPrefix = 'Time to select: ';
+  const topMatchedTitle = 'Top Matched Service Providers';
+  const noMatchesText = 'No matched providers available';
+  const waitingText = 'Waiting for provider response...';
+  const waitingSubtext = 'If they decline or don&apos;t respond in 3 minutes, the gig will be broadcast to all matched providers.';
+  const subscriptionStatusTitle = 'Subscription Status';
+  const activeText = 'Active';
+  const inactiveText = 'Inactive';
+  const subscribeButtonText = 'Subscribe Now (KES 130/month)';
+  const accountInfoTitle = 'Account Information';
+  const accountTypeLabel = 'Account Type';
+  const countyLabel = 'County';
+  const organizationLabel = 'Organization';
+  const genderLabel = 'Gender';
+  const phoneNumberLabel = 'Phone Number';
+  const logoutButtonText = 'Log Out';
+  const confirmSelectionTitle = 'Confirm Selection';
+  const confirmMessagePrefix = 'Send direct gig offer to ';
+  const confirmMessageSuffix = '?';
+  const confirmSubtext = 'They will have 3 minutes to accept. If they decline or don&apos;t respond, the gig will be broadcast to all matched providers.';
+  const cancelText = 'Cancel';
+  const confirmText = 'Confirm';
+  const selectText = 'Select';
+  const retryText = 'Retry';
+
+  const genderDisplay = provider?.gender ? provider.gender.charAt(0).toUpperCase() + provider.gender.slice(1) : '';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.logoHeader}>
           <Image
-            source={resolveImageSource(require('@/assets/images/565b2043-1310-4be0-a4b5-de9ffb63282f.png'))}
+            source={resolveImageSource(require('@/assets/images/871f8a15-4ffb-4ff8-a0ba-ba2f8b2f206f.png'))}
             style={styles.logo}
             resizeMode="contain"
           />
         </View>
 
         <View style={[styles.header, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>
-              {user.firstName?.charAt(0) || 'U'}{user.lastName?.charAt(0) || 'U'}
-            </Text>
+          <View style={styles.avatarImageContainer}>
+            <Image
+              source={resolveImageSource(require('@/assets/images/871f8a15-4ffb-4ff8-a0ba-ba2f8b2f206f.png'))}
+              style={styles.avatarImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={[styles.name, { color: theme.colors.text }]}>
-            {user.firstName} {user.lastName}
+            {fullName}
           </Text>
           <Text style={[styles.email, { color: theme.dark ? '#98989D' : '#666' }]}>
             {user.email}
@@ -335,7 +378,7 @@ export default function ProfileScreen() {
                   style={[styles.retryButton, { backgroundColor: colors.primary }]}
                   onPress={fetchRecentGigAndMatches}
                 >
-                  <Text style={styles.retryButtonText}>Retry</Text>
+                  <Text style={styles.retryButtonText}>{retryText}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -343,7 +386,7 @@ export default function ProfileScreen() {
             {recentGig && (
               <View style={[styles.section, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-                  Recent Gig
+                  {recentGigTitle}
                 </Text>
                 
                 <View style={styles.gigInfo}>
@@ -351,7 +394,7 @@ export default function ProfileScreen() {
                     {recentGig.category}
                   </Text>
                   <Text style={[styles.gigStatus, { color: recentGig.status === 'accepted' ? colors.success : colors.primary }]}>
-                    {recentGig.status === 'accepted' ? 'Accepted' : 'Open'}
+                    {recentGig.status === 'accepted' ? acceptedText : openText}
                   </Text>
                 </View>
 
@@ -359,11 +402,11 @@ export default function ProfileScreen() {
                 {recentGig.status === 'accepted' && acceptedProviderDetails && (
                   <View style={[styles.acceptedProviderCard, { backgroundColor: theme.dark ? '#1a1a1a' : '#f9f9f9' }]}>
                     <Text style={[styles.acceptedTitle, { color: colors.success }]}>
-                      Gig Accepted!
+                      {gigAcceptedTitle}
                     </Text>
                     <View style={styles.providerContactRow}>
                       <Text style={[styles.contactLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
-                        Provider:
+                        {providerLabel}
                       </Text>
                       <Text style={[styles.contactValue, { color: theme.colors.text }]}>
                         {acceptedProviderDetails.name}
@@ -371,7 +414,7 @@ export default function ProfileScreen() {
                     </View>
                     <View style={styles.providerContactRow}>
                       <Text style={[styles.contactLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
-                        Code:
+                        {codeLabel}
                       </Text>
                       <Text style={[styles.contactValue, { color: theme.colors.text }]}>
                         {acceptedProviderDetails.providerCode}
@@ -379,7 +422,7 @@ export default function ProfileScreen() {
                     </View>
                     <View style={styles.providerContactRow}>
                       <Text style={[styles.contactLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
-                        Phone:
+                        {phoneLabel}
                       </Text>
                       <Text style={[styles.contactValue, { color: colors.primary }]}>
                         {acceptedProviderDetails.phoneNumber}
@@ -399,7 +442,7 @@ export default function ProfileScreen() {
                         color={colors.primary}
                       />
                       <Text style={[styles.timerText, { color: theme.colors.text }]}>
-                        Time to select: {timeDisplay}
+                        {timeToSelectPrefix}{timeDisplay}
                       </Text>
                     </View>
 
@@ -408,41 +451,44 @@ export default function ProfileScreen() {
                     ) : matchedProviders.length > 0 ? (
                       <>
                         <Text style={[styles.matchedTitle, { color: theme.colors.text }]}>
-                          Top Matched Service Providers
+                          {topMatchedTitle}
                         </Text>
-                        {matchedProviders.map((provider, index) => (
-                          <View key={index} style={[styles.providerCard, { backgroundColor: theme.dark ? '#1a1a1a' : '#f9f9f9' }]}>
-                            <Image
-                              source={resolveImageSource(provider.photoUrl)}
-                              style={styles.providerPhoto}
-                            />
-                            <View style={styles.providerInfo}>
-                              <Text style={[styles.providerCodeText, { color: theme.colors.text }]}>
-                                {provider.providerCode}
-                              </Text>
-                              <Text style={[styles.providerGender, { color: theme.dark ? '#98989D' : '#666' }]}>
-                                {provider.gender}
-                              </Text>
-                              {provider.distance && (
-                                <Text style={[styles.providerDistance, { color: theme.dark ? '#98989D' : '#666' }]}>
-                                  {provider.distance.toFixed(1)} km away
+                        {matchedProviders.map((provider, index) => {
+                          const distanceText = provider.distance ? `${provider.distance.toFixed(1)} km away` : '';
+                          return (
+                            <View key={index} style={[styles.providerCard, { backgroundColor: theme.dark ? '#1a1a1a' : '#f9f9f9' }]}>
+                              <Image
+                                source={resolveImageSource(provider.photoUrl)}
+                                style={styles.providerPhoto}
+                              />
+                              <View style={styles.providerInfo}>
+                                <Text style={[styles.providerCodeText, { color: theme.colors.text }]}>
+                                  {provider.providerCode}
                                 </Text>
-                              )}
+                                <Text style={[styles.providerGender, { color: theme.dark ? '#98989D' : '#666' }]}>
+                                  {provider.gender}
+                                </Text>
+                                {provider.distance && (
+                                  <Text style={[styles.providerDistance, { color: theme.dark ? '#98989D' : '#666' }]}>
+                                    {distanceText}
+                                  </Text>
+                                )}
+                              </View>
+                              <TouchableOpacity
+                                style={[styles.selectButton, { backgroundColor: colors.primary }]}
+                                onPress={() => handleSelectProvider(provider)}
+                              >
+                                <Text style={styles.selectButtonText}>
+                                  {selectText}
+                                </Text>
+                              </TouchableOpacity>
                             </View>
-                            <TouchableOpacity
-                              style={[styles.selectButton, { backgroundColor: colors.primary }]}
-                              onPress={() => handleSelectProvider(provider)}
-                            >
-                              <Text style={styles.selectButtonText}>
-                                Select
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        ))}
+                          );
+                        })}
                       </>
                     ) : (
                       <Text style={[styles.noMatchesText, { color: theme.dark ? '#98989D' : '#666' }]}>
-                        No matched providers available
+                        {noMatchesText}
                       </Text>
                     )}
                   </>
@@ -453,10 +499,10 @@ export default function ProfileScreen() {
                   <View style={[styles.waitingCard, { backgroundColor: theme.dark ? '#1a1a1a' : '#e7f3ff' }]}>
                     <ActivityIndicator size="small" color={colors.primary} />
                     <Text style={[styles.waitingText, { color: theme.colors.text }]}>
-                      Waiting for provider response...
+                      {waitingText}
                     </Text>
                     <Text style={[styles.waitingSubtext, { color: theme.dark ? '#98989D' : '#666' }]}>
-                      If they decline or don&apos;t respond in 3 minutes, the gig will be broadcast to all matched providers.
+                      {waitingSubtext}
                     </Text>
                   </View>
                 )}
@@ -468,7 +514,7 @@ export default function ProfileScreen() {
         {isProvider && (
           <View style={[styles.section, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Subscription Status
+              {subscriptionStatusTitle}
             </Text>
             <View style={styles.subscriptionRow}>
               <IconSymbol
@@ -478,7 +524,7 @@ export default function ProfileScreen() {
                 color={isSubscribed ? colors.success : colors.error}
               />
               <Text style={[styles.subscriptionText, { color: theme.colors.text }]}>
-                {isSubscribed ? 'Active' : 'Inactive'}
+                {isSubscribed ? activeText : inactiveText}
               </Text>
             </View>
             {!isSubscribed && (
@@ -487,7 +533,7 @@ export default function ProfileScreen() {
                 onPress={handleSubscribe}
               >
                 <Text style={styles.subscribeButtonText}>
-                  Subscribe Now (KES 130/month)
+                  {subscribeButtonText}
                 </Text>
               </TouchableOpacity>
             )}
@@ -496,21 +542,21 @@ export default function ProfileScreen() {
 
         <View style={[styles.section, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Account Information
+            {accountInfoTitle}
           </Text>
           
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Account Type
+              {accountTypeLabel}
             </Text>
             <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-              {user.userType === 'client' ? 'Client' : 'Service Provider'}
+              {accountTypeText}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
-              County
+              {countyLabel}
             </Text>
             <Text style={[styles.infoValue, { color: theme.colors.text }]}>
               {user.county}
@@ -520,7 +566,7 @@ export default function ProfileScreen() {
           {user.organizationName && (
             <View style={styles.infoRow}>
               <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
-                Organization
+                {organizationLabel}
               </Text>
               <Text style={[styles.infoValue, { color: theme.colors.text }]}>
                 {user.organizationName}
@@ -532,16 +578,16 @@ export default function ProfileScreen() {
             <>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
-                  Gender
+                  {genderLabel}
                 </Text>
                 <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                  {provider.gender.charAt(0).toUpperCase() + provider.gender.slice(1)}
+                  {genderDisplay}
                 </Text>
               </View>
 
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
-                  Phone Number
+                  {phoneNumberLabel}
                 </Text>
                 <Text style={[styles.infoValue, { color: theme.colors.text }]}>
                   {provider.phoneNumber}
@@ -561,7 +607,7 @@ export default function ProfileScreen() {
             size={20}
             color="#FFFFFF"
           />
-          <Text style={styles.logoutButtonText}>Log Out</Text>
+          <Text style={styles.logoutButtonText}>{logoutButtonText}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -575,13 +621,13 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-              Confirm Selection
+              {confirmSelectionTitle}
             </Text>
             <Text style={[styles.modalMessage, { color: theme.dark ? '#98989D' : '#666' }]}>
-              Send direct gig offer to {selectedProvider?.providerCode}?
+              {confirmMessagePrefix}{selectedProvider?.providerCode}{confirmMessageSuffix}
             </Text>
             <Text style={[styles.modalSubtext, { color: theme.dark ? '#98989D' : '#666' }]}>
-              They will have 3 minutes to accept. If they decline or don&apos;t respond, the gig will be broadcast to all matched providers.
+              {confirmSubtext}
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -589,7 +635,7 @@ export default function ProfileScreen() {
                 onPress={() => setShowConfirmModal(false)}
               >
                 <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>
-                  Cancel
+                  {cancelText}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -597,7 +643,7 @@ export default function ProfileScreen() {
                 onPress={confirmSelectProvider}
               >
                 <Text style={styles.confirmButtonText}>
-                  Confirm
+                  {confirmText}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -631,18 +677,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
   },
-  avatar: {
+  avatarImageContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
+    overflow: 'hidden',
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+  avatarImage: {
+    width: 80,
+    height: 80,
   },
   name: {
     fontSize: 24,
