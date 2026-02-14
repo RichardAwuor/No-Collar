@@ -1,11 +1,11 @@
 
 {
   "expo": {
-    "name": "Collarless",
-    "slug": "Collarless",
+    "name": "Nyota",
+    "slug": "Nyota",
     "version": "1.0.17",
     "orientation": "portrait",
-    "icon": "./assets/images/db26b245-be92-4c85-bed1-a4d500440202.png",
+    "icon": "./assets/images/79d899ba-dddb-43f7-854c-9098be0cd34e.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -19,19 +19,19 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "icon": "./assets/images/db26b245-be92-4c85-bed1-a4d500440202.png"
+      "icon": "./assets/images/79d899ba-dddb-43f7-854c-9098be0cd34e.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/db26b245-be92-4c85-bed1-a4d500440202.png",
-        "backgroundColor": "#FFFFFF"
+        "foregroundImage": "./assets/images/79d899ba-dddb-43f7-854c-9098be0cd34e.png",
+        "backgroundColor": "#00D98E"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.simphoni.collarless",
       "versionCode": 18
     },
     "web": {
-      "favicon": "./assets/images/db26b245-be92-4c85-bed1-a4d500440202.png",
+      "favicon": "./assets/images/79d899ba-dddb-43f7-854c-9098be0cd34e.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -39,7 +39,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "collarless",
+    "scheme": "nyota",
     "experiments": {
       "typedRoutes": true
     },
