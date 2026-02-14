@@ -296,8 +296,9 @@ export default function ProfileScreen() {
     );
   }
 
-  const firstInitial = user.firstName?.charAt(0) || 'U';
-  const lastInitial = user.lastName?.charAt(0) || 'U';
+  const firstInitial = user.firstName?.charAt(0).toUpperCase() || 'U';
+  const lastInitial = user.lastName?.charAt(0).toUpperCase() || 'U';
+  const initials = `${firstInitial}${lastInitial}`;
   const fullName = `${user.firstName} ${user.lastName}`;
   const accountTypeText = user.userType === 'client' ? 'Client' : 'Service Provider';
   const recentGigTitle = 'Recent Gig';
@@ -338,20 +339,14 @@ export default function ProfileScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.logoHeader}>
-          <Image
-            source={resolveImageSource(require('@/assets/images/5f49e934-ff57-4afc-8f25-a70466c61855.png'))}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <View style={styles.initialsCircle}>
+            <Text style={styles.initialsText}>{initials}</Text>
+          </View>
         </View>
 
         <View style={[styles.header, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
-          <View style={styles.avatarImageContainer}>
-            <Image
-              source={resolveImageSource(require('@/assets/images/5f49e934-ff57-4afc-8f25-a70466c61855.png'))}
-              style={styles.avatarImage}
-              resizeMode="contain"
-            />
+          <View style={styles.avatarInitialsContainer}>
+            <Text style={styles.avatarInitialsText}>{initials}</Text>
           </View>
           <Text style={[styles.name, { color: theme.colors.text }]}>
             {fullName}
@@ -366,15 +361,294 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Rest of the component remains the same - only logo images changed */}
-        {/* ... (continuing with the same structure as the Android version) ... */}
+        {/* Client: Matched Providers Section */}
+        {isClient && (
+          <>
+            {fetchError && (
+              <View style={[styles.errorCard, { backgroundColor: theme.dark ? '#2a1a1a' : '#ffe0e0' }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>
+                  {fetchError}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.retryButton, { backgroundColor: colors.primary }]}
+                  onPress={fetchRecentGigAndMatches}
+                >
+                  <Text style={styles.retryButtonText}>{retryText}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
+            {recentGig && (
+              <View style={[styles.section, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                  {recentGigTitle}
+                </Text>
+                
+                <View style={styles.gigInfo}>
+                  <Text style={[styles.gigCategory, { color: theme.colors.text }]}>
+                    {recentGig.category}
+                  </Text>
+                  <Text style={[styles.gigStatus, { color: recentGig.status === 'accepted' ? colors.success : colors.primary }]}>
+                    {recentGig.status === 'accepted' ? acceptedText : openText}
+                  </Text>
+                </View>
+
+                {/* Show accepted provider details */}
+                {recentGig.status === 'accepted' && acceptedProviderDetails && (
+                  <View style={[styles.acceptedProviderCard, { backgroundColor: theme.dark ? '#1a1a1a' : '#f9f9f9' }]}>
+                    <Text style={[styles.acceptedTitle, { color: colors.success }]}>
+                      {gigAcceptedTitle}
+                    </Text>
+                    <View style={styles.providerContactRow}>
+                      <Text style={[styles.contactLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
+                        {providerLabel}
+                      </Text>
+                      <Text style={[styles.contactValue, { color: theme.colors.text }]}>
+                        {acceptedProviderDetails.name}
+                      </Text>
+                    </View>
+                    <View style={styles.providerContactRow}>
+                      <Text style={[styles.contactLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
+                        {codeLabel}
+                      </Text>
+                      <Text style={[styles.contactValue, { color: theme.colors.text }]}>
+                        {acceptedProviderDetails.providerCode}
+                      </Text>
+                    </View>
+                    <View style={styles.providerContactRow}>
+                      <Text style={[styles.contactLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
+                        {phoneLabel}
+                      </Text>
+                      <Text style={[styles.contactValue, { color: colors.primary }]}>
+                        {acceptedProviderDetails.phoneNumber}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Show selection timer and matched providers */}
+                {recentGig.status === 'open' && !recentGig.selectedProviderId && timeRemaining > 0 && (
+                  <>
+                    <View style={[styles.timerCard, { backgroundColor: theme.dark ? '#1a1a1a' : '#fff3cd' }]}>
+                      <IconSymbol
+                        ios_icon_name="clock"
+                        android_material_icon_name="access-time"
+                        size={20}
+                        color={colors.primary}
+                      />
+                      <Text style={[styles.timerText, { color: theme.colors.text }]}>
+                        {timeToSelectPrefix}{timeDisplay}
+                      </Text>
+                    </View>
+
+                    {loadingMatches ? (
+                      <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+                    ) : matchedProviders.length > 0 ? (
+                      <>
+                        <Text style={[styles.matchedTitle, { color: theme.colors.text }]}>
+                          {topMatchedTitle}
+                        </Text>
+                        {matchedProviders.map((provider, index) => {
+                          const distanceText = provider.distance ? `${provider.distance.toFixed(1)} km away` : '';
+                          return (
+                            <View key={index} style={[styles.providerCard, { backgroundColor: theme.dark ? '#1a1a1a' : '#f9f9f9' }]}>
+                              <Image
+                                source={resolveImageSource(provider.photoUrl)}
+                                style={styles.providerPhoto}
+                              />
+                              <View style={styles.providerInfo}>
+                                <Text style={[styles.providerCodeText, { color: theme.colors.text }]}>
+                                  {provider.providerCode}
+                                </Text>
+                                <Text style={[styles.providerGender, { color: theme.dark ? '#98989D' : '#666' }]}>
+                                  {provider.gender}
+                                </Text>
+                                {provider.distance && (
+                                  <Text style={[styles.providerDistance, { color: theme.dark ? '#98989D' : '#666' }]}>
+                                    {distanceText}
+                                  </Text>
+                                )}
+                              </View>
+                              <TouchableOpacity
+                                style={[styles.selectButton, { backgroundColor: colors.primary }]}
+                                onPress={() => handleSelectProvider(provider)}
+                              >
+                                <Text style={styles.selectButtonText}>
+                                  {selectText}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          );
+                        })}
+                      </>
+                    ) : (
+                      <Text style={[styles.noMatchesText, { color: theme.dark ? '#98989D' : '#666' }]}>
+                        {noMatchesText}
+                      </Text>
+                    )}
+                  </>
+                )}
+
+                {/* Show waiting for provider response */}
+                {recentGig.status === 'open' && recentGig.selectedProviderId && !recentGig.acceptedProviderId && (
+                  <View style={[styles.waitingCard, { backgroundColor: theme.dark ? '#1a1a1a' : '#e7f3ff' }]}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.waitingText, { color: theme.colors.text }]}>
+                      {waitingText}
+                    </Text>
+                    <Text style={[styles.waitingSubtext, { color: theme.dark ? '#98989D' : '#666' }]}>
+                      {waitingSubtext}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </>
+        )}
+
+        {isProvider && (
+          <View style={[styles.section, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              {subscriptionStatusTitle}
+            </Text>
+            <View style={styles.subscriptionRow}>
+              <IconSymbol
+                ios_icon_name={isSubscribed ? 'checkmark.circle' : 'xmark.circle'}
+                android_material_icon_name={isSubscribed ? 'check-circle' : 'cancel'}
+                size={24}
+                color={isSubscribed ? colors.success : colors.error}
+              />
+              <Text style={[styles.subscriptionText, { color: theme.colors.text }]}>
+                {isSubscribed ? activeText : inactiveText}
+              </Text>
+            </View>
+            {!isSubscribed && (
+              <TouchableOpacity
+                style={[styles.subscribeButton, { backgroundColor: colors.primary }]}
+                onPress={handleSubscribe}
+              >
+                <Text style={styles.subscribeButtonText}>
+                  {subscribeButtonText}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        <View style={[styles.section, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            {accountInfoTitle}
+          </Text>
+          
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
+              {accountTypeLabel}
+            </Text>
+            <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+              {accountTypeText}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
+              {countyLabel}
+            </Text>
+            <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+              {user.county}
+            </Text>
+          </View>
+
+          {user.organizationName && (
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
+                {organizationLabel}
+              </Text>
+              <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                {user.organizationName}
+              </Text>
+            </View>
+          )}
+
+          {isProvider && provider && (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
+                  {genderLabel}
+                </Text>
+                <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                  {genderDisplay}
+                </Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: theme.dark ? '#98989D' : '#666' }]}>
+                  {phoneNumberLabel}
+                </Text>
+                <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                  {provider.phoneNumber}
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.logoutButton, { backgroundColor: colors.primary }]}
+          onPress={handleLogout}
+        >
+          <IconSymbol
+            ios_icon_name="arrow.right.square"
+            android_material_icon_name="logout"
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={styles.logoutButtonText}>{logoutButtonText}</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              {confirmSelectionTitle}
+            </Text>
+            <Text style={[styles.modalMessage, { color: theme.dark ? '#98989D' : '#666' }]}>
+              {confirmMessagePrefix}{selectedProvider?.providerCode}{confirmMessageSuffix}
+            </Text>
+            <Text style={[styles.modalSubtext, { color: theme.dark ? '#98989D' : '#666' }]}>
+              {confirmSubtext}
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton, { backgroundColor: theme.dark ? '#2a2a2a' : '#e0e0e0' }]}
+                onPress={() => setShowConfirmModal(false)}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>
+                  {cancelText}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton, { backgroundColor: colors.primary }]}
+                onPress={confirmSelectProvider}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {confirmText}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-// Styles remain the same
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -389,27 +663,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  logo: {
-    width: 80,
-    height: 80,
+  initialsCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FF0000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  initialsText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   header: {
     padding: 24,
     borderRadius: 12,
     alignItems: 'center',
   },
-  avatarImageContainer: {
+  avatarInitialsContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
+    backgroundColor: '#FF0000',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    overflow: 'hidden',
   },
-  avatarImage: {
-    width: 80,
-    height: 80,
+  avatarInitialsText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   name: {
     fontSize: 24,
@@ -424,7 +708,249 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // ... rest of styles remain the same
+  section: {
+    padding: 16,
+    borderRadius: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  errorCard: {
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  retryButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  gigInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  gigCategory: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  gigStatus: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  acceptedProviderCard: {
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 8,
+  },
+  acceptedTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  providerContactRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  contactLabel: {
+    fontSize: 14,
+  },
+  contactValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  timerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  timerText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loader: {
+    marginVertical: 20,
+  },
+  matchedTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  providerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    gap: 12,
+  },
+  providerPhoto: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  providerInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  providerCodeText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  providerGender: {
+    fontSize: 12,
+  },
+  providerDistance: {
+    fontSize: 12,
+  },
+  selectButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  selectButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  noMatchesText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginVertical: 20,
+  },
+  waitingCard: {
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    alignItems: 'center',
+    gap: 8,
+  },
+  waitingText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  waitingSubtext: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  subscriptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  subscriptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  subscribeButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  subscribeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  infoLabel: {
+    fontSize: 16,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  logoutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    padding: 24,
+    borderRadius: 12,
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  modalSubtext: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    borderWidth: 0,
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',

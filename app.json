@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "Nyota",
@@ -39,7 +38,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "nyota",
+    "scheme": "Nyota",
     "experiments": {
       "typedRoutes": true
     },

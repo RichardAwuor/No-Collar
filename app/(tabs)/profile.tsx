@@ -296,8 +296,9 @@ export default function ProfileScreen() {
     );
   }
 
-  const firstInitial = user.firstName?.charAt(0) || 'U';
-  const lastInitial = user.lastName?.charAt(0) || 'U';
+  const firstInitial = user.firstName?.charAt(0).toUpperCase() || 'U';
+  const lastInitial = user.lastName?.charAt(0).toUpperCase() || 'U';
+  const initials = `${firstInitial}${lastInitial}`;
   const fullName = `${user.firstName} ${user.lastName}`;
   const accountTypeText = user.userType === 'client' ? 'Client' : 'Service Provider';
   const recentGigTitle = 'Recent Gig';
@@ -338,20 +339,14 @@ export default function ProfileScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.logoHeader}>
-          <Image
-            source={resolveImageSource(require('@/assets/images/5f49e934-ff57-4afc-8f25-a70466c61855.png'))}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <View style={styles.initialsCircle}>
+            <Text style={styles.initialsText}>{initials}</Text>
+          </View>
         </View>
 
         <View style={[styles.header, { backgroundColor: theme.dark ? colors.cardDark : colors.card }]}>
-          <View style={styles.avatarImageContainer}>
-            <Image
-              source={resolveImageSource(require('@/assets/images/5f49e934-ff57-4afc-8f25-a70466c61855.png'))}
-              style={styles.avatarImage}
-              resizeMode="contain"
-            />
+          <View style={styles.avatarInitialsContainer}>
+            <Text style={styles.avatarInitialsText}>{initials}</Text>
           </View>
           <Text style={[styles.name, { color: theme.colors.text }]}>
             {fullName}
@@ -668,27 +663,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  logo: {
+  initialsCircle: {
     width: 60,
     height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FF0000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  initialsText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   header: {
     padding: 24,
     borderRadius: 12,
     alignItems: 'center',
   },
-  avatarImageContainer: {
+  avatarInitialsContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
+    backgroundColor: '#FF0000',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    overflow: 'hidden',
   },
-  avatarImage: {
-    width: 80,
-    height: 80,
+  avatarInitialsText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   name: {
     fontSize: 24,
