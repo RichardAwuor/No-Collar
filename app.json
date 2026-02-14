@@ -5,7 +5,7 @@
     "slug": "collarless",
     "version": "1.0.17",
     "orientation": "portrait",
-    "icon": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png",
+    "icon": "./assets/images/db26b245-be92-4c85-bed1-a4d500440202.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -19,11 +19,11 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "icon": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png"
+      "icon": "./assets/images/db26b245-be92-4c85-bed1-a4d500440202.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png",
+        "foregroundImage": "./assets/images/db26b245-be92-4c85-bed1-a4d500440202.png",
         "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
@@ -31,7 +31,7 @@
       "versionCode": 18
     },
     "web": {
-      "favicon": "./assets/images/71c943a8-642c-48a0-a3c6-37711fd3543c.png",
+      "favicon": "./assets/images/db26b245-be92-4c85-bed1-a4d500440202.png",
       "bundler": "metro"
     },
     "plugins": [
