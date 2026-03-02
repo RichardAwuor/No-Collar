@@ -1,16 +1,22 @@
 
-import React, { useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
   Image,
   ImageSourcePropType,
   ActivityIndicator,
+  useColorScheme,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/styles/commonStyles';
+import { IconSymbol } from '@/components/IconSymbol';
+import { useUser } from '@/contexts/UserContext';
 
 // Helper to resolve image sources (handles both local require() and remote URLs)
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
@@ -19,41 +25,341 @@ function resolveImageSource(source: string | number | ImageSourcePropType | unde
   return source as ImageSourcePropType;
 }
 
-export default function SubscriptionPaymentScreen() {
-  const router = useRouter();
-
-  console.log('Subscription payment screen loaded - auto-transitioning in 2 seconds');
-
-  // Automatically transition to Take-A-Gig screen after 2 seconds
-  useEffect(() => {
-    console.log('Auto-transitioning to Take-A-Gig screen in 2 seconds');
-    const timer = setTimeout(() => {
-      console.log('Navigating to Take-A-Gig screen');
-      router.replace('/(tabs)/(home)');
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [router]);
-
-  const transitioningText = 'Redirecting to Take-A-Gig...';
+// Custom Modal for messages
+function MessageModal({ visible, title, message, onClose, isError }: {
+  visible: boolean;
+  title: string;
+  message: string;
+  onClose: () => void;
+  isError?: boolean;
+}) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const bgColor = isDark ? colors.backgroundDark : colors.background;
+  const textColor = isDark ? colors.textDark : colors.text;
+  const cardColor = isDark ? colors.cardDark : colors.card;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
-      <View style={styles.content}>
-        <View style={styles.imageContainer}>
-          <Image
-            source={resolveImageSource(require('@/assets/images/5f49e934-ff57-4afc-8f25-a70466c61855.png'))}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: cardColor }]}>
+          <View style={[styles.modalIconContainer, { backgroundColor: isError ? 'rgba(255, 59, 48, 0.1)' : 'rgba(52, 199, 89, 0.1)' }]}>
+            <IconSymbol
+              ios_icon_name={isError ? 'xmark.circle.fill' : 'checkmark.circle.fill'}
+              android_material_icon_name={isError ? 'cancel' : 'check-circle'}
+              size={48}
+              color={isError ? '#FF3B30' : '#34C759'}
+            />
+          </View>
+          <Text style={[styles.modalTitle, { color: textColor }]}>{title}</Text>
+          <Text style={[styles.modalMessage, { color: textColor }]}>{message}</Text>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: colors.primary }]}
+            onPress={onClose}
+          >
+            <Text style={styles.modalButtonText}>OK</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+export default function SubscriptionPaymentScreen() {
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const { provider, setProvider } = useUser();
+
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  const [isError, setIsError] = useState(false);
+
+  console.log('Subscription payment screen loaded');
+
+  const bgColor = isDark ? colors.backgroundDark : colors.background;
+  const textColor = isDark ? colors.textDark : colors.text;
+  const cardColor = isDark ? colors.cardDark : colors.card;
+  const borderColor = isDark ? colors.borderDark : colors.border;
+
+  const subscriptionAmount = 130;
+  const merchantNumber = '6803513';
+
+  const showMessage = (title: string, message: string, error: boolean = false) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setIsError(error);
+    setModalVisible(true);
+  };
+
+  const handleSubscribe = async () => {
+    console.log('Subscribe button pressed - initiating M-Pesa payment');
+
+    if (!provider?.id) {
+      showMessage('Error', 'Provider information not found. Please register again.', true);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { BACKEND_URL } = await import('@/utils/api');
+
+      // Initiate M-Pesa STK Push
+      const requestBody = {
+        providerId: provider.id,
+        amount: subscriptionAmount,
+      };
+
+      console.log('Sending M-Pesa payment request:', requestBody);
+
+      const response = await fetch(`${BACKEND_URL}/api/mpesa/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to initiate payment');
+      }
+
+      const data = await response.json();
+      console.log('M-Pesa payment response:', data);
+
+      setLoading(false);
+
+      if (data.success) {
+        // Update provider subscription status
+        if (setProvider && provider) {
+          setProvider({
+            ...provider,
+            subscriptionStatus: 'active',
+          });
+        }
+
+        showMessage(
+          'Payment Initiated',
+          'Please check your phone for the M-Pesa prompt. Enter your PIN to complete the payment.',
+          false
+        );
+
+        // Navigate to Take-A-Gig screen after user closes the modal
+        setTimeout(() => {
+          console.log('Navigating to Take-A-Gig screen');
+          router.replace('/(tabs)/(home)');
+        }, 3000);
+      } else {
+        showMessage('Payment Failed', data.message || 'Unable to process payment. Please try again.', true);
+      }
+    } catch (error) {
+      console.error('Subscription payment error:', error);
+      setLoading(false);
+
+      let errorMessage = 'Failed to initiate payment. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      showMessage('Payment Error', errorMessage, true);
+    }
+  };
+
+  const subscriptionAmountText = `KES ${subscriptionAmount}`;
+  const merchantNumberText = `Merchant: ${merchantNumber}`;
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={resolveImageSource(require('@/assets/images/5f49e934-ff57-4afc-8f25-a70466c61855.png'))}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+
+          <Text style={[styles.title, { color: textColor }]}>
+            Monthly Subscription
+          </Text>
+          <Text style={[styles.subtitle, { color: textColor }]}>
+            Subscribe to access gigs and grow your business
+          </Text>
         </View>
 
-        <Text style={[styles.title, { color: colors.text }]}>
-          {transitioningText}
-        </Text>
-        
-        <ActivityIndicator size="large" color="#FF0000" style={styles.loader} />
-      </View>
+        <View style={[styles.card, { backgroundColor: cardColor, borderColor }]}>
+          <View style={styles.priceContainer}>
+            <Text style={[styles.priceLabel, { color: textColor }]}>
+              Subscription Fee
+            </Text>
+            <Text style={[styles.priceAmount, { color: colors.primary }]}>
+              {subscriptionAmountText}
+            </Text>
+            <Text style={[styles.priceFrequency, { color: textColor }]}>
+              per month
+            </Text>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: borderColor }]} />
+
+          <View style={styles.benefitsContainer}>
+            <Text style={[styles.benefitsTitle, { color: textColor }]}>
+              What you get:
+            </Text>
+
+            <View style={styles.benefitItem}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check-circle"
+                size={24}
+                color="#34C759"
+              />
+              <Text style={[styles.benefitText, { color: textColor }]}>
+                Access to all available gigs
+              </Text>
+            </View>
+
+            <View style={styles.benefitItem}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check-circle"
+                size={24}
+                color="#34C759"
+              />
+              <Text style={[styles.benefitText, { color: textColor }]}>
+                Direct client connections
+              </Text>
+            </View>
+
+            <View style={styles.benefitItem}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check-circle"
+                size={24}
+                color="#34C759"
+              />
+              <Text style={[styles.benefitText, { color: textColor }]}>
+                Profile visibility to clients
+              </Text>
+            </View>
+
+            <View style={styles.benefitItem}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check-circle"
+                size={24}
+                color="#34C759"
+              />
+              <Text style={[styles.benefitText, { color: textColor }]}>
+                Unlimited gig applications
+              </Text>
+            </View>
+
+            <View style={styles.benefitItem}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check-circle"
+                size={24}
+                color="#34C759"
+              />
+              <Text style={[styles.benefitText, { color: textColor }]}>
+                30-day access period
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: borderColor }]} />
+
+          <View style={styles.paymentInfoContainer}>
+            <View style={styles.mpesaLogoContainer}>
+              <Text style={[styles.mpesaText, { color: textColor }]}>
+                Pay with M-Pesa
+              </Text>
+            </View>
+
+            <View style={styles.merchantInfo}>
+              <IconSymbol
+                ios_icon_name="building.2.fill"
+                android_material_icon_name="store"
+                size={20}
+                color={textColor}
+              />
+              <Text style={[styles.merchantText, { color: textColor }]}>
+                {merchantNumberText}
+              </Text>
+            </View>
+
+            <View style={[styles.infoBox, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : 'rgba(0, 122, 255, 0.1)' }]}>
+              <IconSymbol
+                ios_icon_name="info.circle.fill"
+                android_material_icon_name="info"
+                size={20}
+                color="#007AFF"
+              />
+              <Text style={[styles.infoText, { color: textColor }]}>
+                You will receive an M-Pesa prompt on your phone. Enter your PIN to complete the payment.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.subscribeButton,
+            { backgroundColor: colors.primary },
+            loading && styles.subscribeButtonDisabled
+          ]}
+          onPress={handleSubscribe}
+          disabled={loading}
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.subscribeButtonText}>Processing...</Text>
+            </View>
+          ) : (
+            <View style={styles.buttonContent}>
+              <IconSymbol
+                ios_icon_name="creditcard.fill"
+                android_material_icon_name="payment"
+                size={24}
+                color="#FFFFFF"
+              />
+              <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <View style={[styles.renewalNotice, { backgroundColor: isDark ? 'rgba(255, 204, 0, 0.15)' : 'rgba(255, 204, 0, 0.1)' }]}>
+          <IconSymbol
+            ios_icon_name="arrow.clockwise.circle.fill"
+            android_material_icon_name="refresh"
+            size={20}
+            color="#FFCC00"
+          />
+          <Text style={[styles.renewalText, { color: textColor }]}>
+            Subscription renews every 30 days. You will be notified before renewal.
+          </Text>
+        </View>
+      </ScrollView>
+
+      <MessageModal
+        visible={modalVisible}
+        title={modalTitle}
+        message={modalMessage}
+        onClose={() => setModalVisible(false)}
+        isError={isError}
+      />
     </SafeAreaView>
   );
 }
@@ -62,32 +368,197 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingTop: 20,
+    paddingBottom: 40,
   },
-  imageContainer: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    justifyContent: 'center',
+  header: {
     alignItems: 'center',
     marginBottom: 32,
   },
+  logoContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   logo: {
-    width: 200,
-    height: 200,
+    width: 120,
+    height: 120,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 8,
     textAlign: 'center',
   },
-  loader: {
-    marginTop: 16,
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+    textAlign: 'center',
+  },
+  card: {
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  priceContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  priceLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  priceAmount: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  priceFrequency: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 24,
+  },
+  benefitsContainer: {
+    gap: 16,
+  },
+  benefitsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  benefitText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  paymentInfoContainer: {
+    gap: 16,
+  },
+  mpesaLogoContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  mpesaText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  merchantInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  merchantText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
+  subscribeButton: {
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  subscribeButtonDisabled: {
+    opacity: 0.6,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  subscribeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  renewalNotice: {
+    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  renewalText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+    marginBottom: 24,
+    opacity: 0.8,
+  },
+  modalButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    minWidth: 120,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
