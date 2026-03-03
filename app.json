@@ -1,8 +1,9 @@
+
 {
   "expo": {
     "name": "Nyota-KE",
-    "slug": "Nyota-KE",
-    "version": "1.0.17",
+    "slug": "nyota",
+    "version": "1.0.20",
     "orientation": "portrait",
     "icon": "./assets/images/8ef275bc-8f51-4955-80a7-99df5ae572b7.png",
     "userInterfaceStyle": "automatic",
@@ -26,8 +27,8 @@
         "backgroundColor": "#00D98E"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.simphoni.collarless",
-      "versionCode": 18
+      "package": "com.simphoni.nyotake",
+      "versionCode": 21
     },
     "web": {
       "favicon": "./assets/images/8ef275bc-8f51-4955-80a7-99df5ae572b7.png",
@@ -38,13 +39,13 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "Nyota-KE",
+    "scheme": "nyota-ke",
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://9rs686wkexp8cbxgtddvuzrpcv4x9xn8.app.specular.dev"
+      "backendUrl": "https://prod-proj-2nybuz8fbmvczltakxgen-liwg5h36mq-ey.a.run.app"
     }
   }
 }
