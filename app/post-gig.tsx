@@ -167,7 +167,9 @@ export default function PostGigScreen() {
 
     try {
       console.log('Navigating to profile screen');
-      router.replace('/(tabs)/profile');
+      // router.navigate is safer than router.replace for cross-hierarchy
+      // navigation on Android (stack -> tab route)
+      router.navigate('/(tabs)/profile');
     } catch (navError) {
       console.error('Navigation error after gig post:', navError);
       try {
@@ -335,6 +337,20 @@ export default function PostGigScreen() {
         }}
       />
       <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            console.log('Back button pressed on post-gig screen');
+            router.back();
+          }}
+        >
+          <IconSymbol
+            ios_icon_name="chevron.left"
+            android_material_icon_name="arrow-back"
+            size={24}
+            color={textColor}
+          />
+        </TouchableOpacity>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.logoHeader}>
             <Image
@@ -630,6 +646,11 @@ export default function PostGigScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  backButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignSelf: 'flex-start',
   },
   scrollContent: {
     paddingHorizontal: 24,
