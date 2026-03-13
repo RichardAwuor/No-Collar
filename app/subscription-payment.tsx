@@ -139,7 +139,7 @@ export default function SubscriptionPaymentScreen() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('M-Pesa API error:', errorData);
-        throw new Error(errorData.error || 'Failed to initiate payment');
+        throw new Error(errorData.error || errorData.message || `Payment service error (${response.status}). Please try again.`);
       }
 
       const data = await response.json();
@@ -167,8 +167,14 @@ export default function SubscriptionPaymentScreen() {
       setLoading(false);
 
       let errorMessage = 'Failed to initiate payment. Please try again.';
-      if (error instanceof Error) {
-        errorMessage = error.message;
+      if (error instanceof TypeError && error.message.includes('Network request failed')) {
+        errorMessage = 'No internet connection. Please check your network and try again.';
+      } else if (error instanceof Error) {
+        if (error.message && error.message !== 'Internal Server Error') {
+          errorMessage = error.message;
+        } else if (error.message === 'Internal Server Error') {
+          errorMessage = 'Payment service is temporarily unavailable. Please try again later.';
+        }
       }
 
       showMessage('Payment Error', errorMessage, true);
