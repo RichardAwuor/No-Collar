@@ -81,6 +81,7 @@ export default function SubscriptionPaymentScreen() {
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
   const [isError, setIsError] = useState(false);
+  const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
 
   console.log('Subscription payment screen loaded');
 
@@ -90,7 +91,7 @@ export default function SubscriptionPaymentScreen() {
   const borderColor = isDark ? colors.borderDark : colors.border;
 
   const subscriptionAmount = 130;
-  const merchantNumber = '6803513';
+  const merchantNumber = '4523859'; // Production go-live Short Code
 
   const showMessage = (title: string, message: string, error: boolean = false) => {
     setModalTitle(title);
@@ -107,20 +108,27 @@ export default function SubscriptionPaymentScreen() {
       return;
     }
 
+    // Get phone number from provider
+    const phoneNumber = provider.phoneNumber;
+    if (!phoneNumber) {
+      showMessage('Error', 'Phone number not found. Please update your profile.', true);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { BACKEND_URL } = await import('@/utils/api');
 
-      // Initiate M-Pesa STK Push
+      // Initiate M-Pesa STK Push using the correct endpoint
       const requestBody = {
         providerId: provider.id,
-        amount: subscriptionAmount,
+        phoneNumber: phoneNumber,
       };
 
-      console.log('Sending M-Pesa payment request:', requestBody);
+      console.log('Sending M-Pesa payment request to /api/mpesa/initiate:', requestBody);
 
-      const response = await fetch(`${BACKEND_URL}/api/mpesa/subscribe`, {
+      const response = await fetch(`${BACKEND_URL}/api/mpesa/initiate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +138,8 @@ export default function SubscriptionPaymentScreen() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to initiate payment');
+        console.error('M-Pesa API error:', errorData);
+        throw new Error(errorData.error || 'Failed to initiate payment');
       }
 
       const data = await response.json();
@@ -138,28 +147,20 @@ export default function SubscriptionPaymentScreen() {
 
       setLoading(false);
 
-      if (data.success) {
-        // Update provider subscription status
-        if (setProvider && provider) {
-          setProvider({
-            ...provider,
-            subscriptionStatus: 'active',
-          });
-        }
+      if (data.checkoutRequestId) {
+        // Store checkout request ID for status polling
+        setCheckoutRequestId(data.checkoutRequestId);
 
         showMessage(
           'Payment Initiated',
-          'Please check your phone for the M-Pesa prompt. Enter your PIN to complete the payment.',
+          data.message || 'Please check your phone for the M-Pesa prompt. Enter your PIN to complete the payment.',
           false
         );
 
-        // Navigate to Take-A-Gig screen after user closes the modal
-        setTimeout(() => {
-          console.log('Navigating to Take-A-Gig screen');
-          router.replace('/(tabs)/(home)');
-        }, 3000);
+        // Poll for payment status
+        pollPaymentStatus(data.checkoutRequestId);
       } else {
-        showMessage('Payment Failed', data.message || 'Unable to process payment. Please try again.', true);
+        showMessage('Payment Failed', 'Unable to process payment. Please try again.', true);
       }
     } catch (error) {
       console.error('Subscription payment error:', error);
@@ -171,6 +172,72 @@ export default function SubscriptionPaymentScreen() {
       }
 
       showMessage('Payment Error', errorMessage, true);
+    }
+  };
+
+  const pollPaymentStatus = async (requestId: string) => {
+    console.log('Polling payment status for:', requestId);
+    
+    try {
+      const { BACKEND_URL } = await import('@/utils/api');
+      
+      // Poll every 3 seconds for up to 60 seconds
+      let attempts = 0;
+      const maxAttempts = 20;
+      
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        
+        try {
+          const response = await fetch(`${BACKEND_URL}/api/mpesa/status/${requestId}`);
+          
+          if (response.ok) {
+            const statusData = await response.json();
+            console.log('Payment status:', statusData);
+            
+            if (statusData.status === 'completed') {
+              clearInterval(pollInterval);
+              
+              // Update provider subscription status
+              if (setProvider && provider) {
+                setProvider({
+                  ...provider,
+                  subscriptionStatus: 'active',
+                });
+              }
+              
+              showMessage(
+                'Payment Successful',
+                'Your subscription is now active. Welcome to NO-COLLAR!',
+                false
+              );
+              
+              // Navigate to Take-A-Gig screen
+              setTimeout(() => {
+                console.log('Navigating to Take-A-Gig screen');
+                router.replace('/(tabs)/(home)');
+              }, 2000);
+            } else if (statusData.status === 'failed') {
+              clearInterval(pollInterval);
+              showMessage(
+                'Payment Failed',
+                statusData.resultDesc || 'Payment was not completed. Please try again.',
+                true
+              );
+            }
+          }
+        } catch (pollError) {
+          console.error('Error polling payment status:', pollError);
+        }
+        
+        // Stop polling after max attempts
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          console.log('Payment status polling timed out');
+        }
+      }, 3000);
+    } catch (error) {
+      console.error('Error setting up payment polling:', error);
     }
   };
 
