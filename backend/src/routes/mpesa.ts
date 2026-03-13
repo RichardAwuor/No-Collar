@@ -4,16 +4,18 @@ import axios from 'axios';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 
-// M-Pesa C2B credentials (Production)
+// M-Pesa credentials (Production Go-Live)
 const CONSUMER_KEY = 'bZHFT3P37yZRT6W06xI6hbaqiR3n2A887tmi9T01ZwbjX2Ab';
 const CONSUMER_SECRET = '5bBgJVgT6EO5pGuAHBG9FZxbaau7ky5LCkcYQFx8DxuFvmbOVOMAgynkZAsg6xhz';
-const SHORTCODE = '6803513';
+const SHORTCODE = '4523859';
+const PASSKEY = '2a7d86a26de9020e3001c3c94a0a1f90e8165efb009b9dbc8e560b9bfa0c9af3';
 const SUBSCRIPTION_AMOUNT = 130;
 
-// M-Pesa API URLs (Production - C2B)
+// M-Pesa API URLs (Production Go-Live)
 const AUTH_URL = 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
-const C2B_REGISTER_URL = 'https://api.safaricom.co.ke/mpesa/c2b/v1/registerurl';
-const C2B_SIMULATE_URL = 'https://api.safaricom.co.ke/mpesa/c2b/v1/simulate';
+const C2B_REGISTER_URL = 'https://api.safaricom.co.ke/mpesa/c2b/v2/registerurl';
+const STK_PUSH_URL = 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
+const TRANSACTION_STATUS_URL = 'https://api.safaricom.co.ke/mpesa/transactionstatus/v1/query';
 
 // Get M-Pesa access token
 async function getMpesaAccessToken(): Promise<string> {
@@ -51,17 +53,17 @@ function generatePassword(shortcode: string, passkey: string, timestamp: string)
 }
 
 export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
-  // POST /api/mpesa/initiate
-  fastify.post('/api/mpesa/initiate', {
+  // POST /api/mpesa/subscribe
+  fastify.post('/api/mpesa/subscribe', {
     schema: {
       description: 'Initiate M-Pesa STK Push for subscription payment',
       tags: ['mpesa'],
       body: {
         type: 'object',
-        required: ['providerId', 'phoneNumber'],
+        required: ['providerId'],
         properties: {
           providerId: { type: 'string' },
-          phoneNumber: { type: 'string' },
+          amount: { type: 'number', default: SUBSCRIPTION_AMOUNT },
         },
       },
       response: {
@@ -69,27 +71,31 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
           description: 'STK Push initiated successfully',
           type: 'object',
           properties: {
-            checkoutRequestId: { type: 'string' },
+            success: { type: 'boolean' },
             message: { type: 'string' },
+            checkoutRequestId: { type: 'string' },
           },
         },
         400: {
           type: 'object',
-          properties: { error: { type: 'string' } },
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          },
         },
       },
     },
   }, async (
     request: FastifyRequest<{
-      Body: { providerId: string; phoneNumber: string };
+      Body: { providerId: string; amount?: number };
     }>,
     reply: FastifyReply
   ) => {
-    const { providerId, phoneNumber } = request.body;
-    app.logger.info({ providerId, phoneNumber }, 'Initiating M-Pesa payment');
+    const { providerId, amount = SUBSCRIPTION_AMOUNT } = request.body;
+    app.logger.info({ providerId, amount }, 'Initiating M-Pesa subscription payment');
 
     try {
-      // Verify provider exists
+      // Verify provider exists and get phone number
       const provider = await app.db
         .select()
         .from(schema.serviceProviders)
@@ -97,7 +103,19 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
 
       if (provider.length === 0) {
         app.logger.warn({ providerId }, 'Provider not found');
-        return reply.status(400).send({ error: 'Provider not found' });
+        return reply.status(400).send({
+          success: false,
+          message: 'Provider not found'
+        });
+      }
+
+      const phoneNumber = provider[0].phoneNumber;
+      if (!phoneNumber) {
+        app.logger.warn({ providerId }, 'Provider has no phone number');
+        return reply.status(400).send({
+          success: false,
+          message: 'Provider phone number not found'
+        });
       }
 
       // Format and validate phone number: must be exactly 12 digits starting with 254
@@ -113,7 +131,10 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
       // Validate phone number format: exactly 12 digits, starts with 254
       if (!/^254\d{9}$/.test(formattedPhone)) {
         app.logger.warn({ phoneNumber, formattedPhone }, 'Invalid phone number format');
-        return reply.status(400).send({ error: 'Invalid phone number. Must be in format 254XXXXXXXXX' });
+        return reply.status(400).send({
+          success: false,
+          message: 'Invalid phone number format'
+        });
       }
 
       // Get M-Pesa access token
@@ -122,50 +143,56 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
         accessToken = await getMpesaAccessToken();
       } catch (tokenError: any) {
         app.logger.error({ err: tokenError, providerId }, 'Failed to get M-Pesa access token');
-        return reply.status(500).send({ error: 'Failed to authenticate with M-Pesa' });
+        return reply.status(500).send({
+          success: false,
+          message: 'Failed to authenticate with M-Pesa'
+        });
       }
 
-      const merchantRequestId = `MR-${Date.now()}-${providerId}`;
+      const timestamp = getTimestamp();
+      const password = generatePassword(SHORTCODE, PASSKEY, timestamp);
       const callbackUrl = process.env.MPESA_CALLBACK_URL || `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/mpesa/callback`;
+      const merchantRequestId = `MR-${Date.now()}-${providerId}`;
 
-      // Build C2B Simulate request
-      const c2bPayload = {
-        ShortCode: SHORTCODE,
-        CommandID: 'CustomerPayBillOnline',
-        Amount: SUBSCRIPTION_AMOUNT.toString(),
-        Msisdn: formattedPhone,
-        BillRefNumber: `Collarless-${providerId}`,
+      // Build STK Push request
+      const stkPayload = {
+        BusinessShortCode: SHORTCODE,
+        Password: password,
+        Timestamp: timestamp,
+        TransactionType: 'CustomerPayBillOnline',
+        Amount: amount.toString(),
+        PartyA: formattedPhone,
+        PartyB: SHORTCODE,
+        PhoneNumber: formattedPhone,
+        CallBackURL: callbackUrl,
+        AccountReference: `Collarless-${providerId}`,
+        TransactionDesc: 'Subscription payment',
       };
 
       app.logger.info(
         {
           shortCode: SHORTCODE,
-          amount: SUBSCRIPTION_AMOUNT,
+          amount,
           msisdn: formattedPhone,
-          commandId: 'CustomerPayBillOnline',
-          billRefNumber: `Collarless-${providerId}`,
+          callbackUrl,
+          accountRef: `Collarless-${providerId}`,
         },
-        'M-Pesa C2B request prepared'
+        'M-Pesa STK Push request prepared'
       );
 
-      app.logger.debug(
-        { payload: c2bPayload },
-        'C2B full payload (for debugging)'
-      );
-
-      // Initiate C2B Simulate
-      let c2bResponse;
+      // Initiate STK Push
+      let stkResponse;
       try {
         app.logger.info(
           {
-            url: C2B_SIMULATE_URL,
-            payloadKeys: Object.keys(c2bPayload),
-            amount: c2bPayload.Amount,
+            url: STK_PUSH_URL,
+            amount,
+            phoneNumber: formattedPhone,
           },
-          'Sending C2B Simulate request to M-Pesa'
+          'Sending STK Push request to M-Pesa'
         );
 
-        c2bResponse = await axios.post(C2B_SIMULATE_URL, c2bPayload, {
+        stkResponse = await axios.post(STK_PUSH_URL, stkPayload, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
@@ -174,90 +201,88 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
 
         app.logger.info(
           {
-            status: c2bResponse.status,
-            responseCode: c2bResponse.data?.ResponseCode,
-            responseDescription: c2bResponse.data?.ResponseDescription,
-            transactionId: c2bResponse.data?.TransactionID,
+            status: stkResponse.status,
+            responseCode: stkResponse.data?.ResponseCode,
+            responseDescription: stkResponse.data?.ResponseDescription,
+            checkoutRequestId: stkResponse.data?.CheckoutRequestID,
+            merchantRequestId: stkResponse.data?.MerchantRequestID,
           },
-          'M-Pesa C2B response received'
+          'M-Pesa STK Push response received'
         );
-      } catch (c2bError: any) {
-        const errorStatus = c2bError.response?.status;
-        const errorData = c2bError.response?.data;
-        const errorMessage = errorData?.errorMessage || errorData?.message || errorData?.ResponseDescription || c2bError.message;
+      } catch (stkError: any) {
+        const errorStatus = stkError.response?.status;
+        const errorData = stkError.response?.data;
+        const errorMessage = errorData?.errorMessage || errorData?.message || errorData?.ResponseDescription || stkError.message;
 
         app.logger.error(
           {
-            err: c2bError,
+            err: stkError,
             providerId,
             phoneNumber: formattedPhone,
             httpStatus: errorStatus,
             mpesaErrorCode: errorData?.requestId,
             mpesaErrorMessage: errorMessage,
             mpesaFullError: errorData,
-            requestPayload: {
-              ShortCode: c2bPayload.ShortCode,
-              CommandID: c2bPayload.CommandID,
-              Amount: c2bPayload.Amount,
-              Msisdn: c2bPayload.Msisdn,
-              BillRefNumber: c2bPayload.BillRefNumber,
-            },
           },
-          'M-Pesa C2B API request failed'
+          'M-Pesa STK Push API request failed'
         );
 
         const errorDetail = errorMessage || JSON.stringify(errorData) || 'Unknown error';
         return reply.status(errorStatus || 400).send({
-          error: `M-Pesa API Error: ${errorDetail}`,
-          details: {
-            requestId: errorData?.requestId,
-            errorCode: errorData?.errorCode,
-          },
+          success: false,
+          message: `M-Pesa API Error: ${errorDetail}`,
         });
       }
 
-      const transactionId = c2bResponse.data.TransactionID;
+      const checkoutRequestId = stkResponse.data.CheckoutRequestID;
 
-      if (!transactionId) {
+      if (!checkoutRequestId) {
         app.logger.error(
-          { responseData: c2bResponse.data },
-          'M-Pesa response missing TransactionID'
+          { responseData: stkResponse.data },
+          'M-Pesa response missing CheckoutRequestID'
         );
-        return reply.status(500).send({ error: 'Invalid response from M-Pesa: missing TransactionID' });
+        return reply.status(500).send({
+          success: false,
+          message: 'Invalid response from M-Pesa'
+        });
       }
 
       // Store transaction record
       await app.db.insert(schema.mpesaTransactions).values({
         providerId,
-        merchantRequestId,
-        checkoutRequestId: transactionId,
+        merchantRequestId: stkResponse.data.MerchantRequestID,
+        checkoutRequestId,
         phoneNumber: formattedPhone,
-        amount: SUBSCRIPTION_AMOUNT,
+        amount,
         status: 'pending',
       });
 
       app.logger.info(
-        { providerId, transactionId, phoneNumber: formattedPhone, amount: SUBSCRIPTION_AMOUNT },
-        'C2B payment initiated successfully'
+        { providerId, checkoutRequestId, phoneNumber: formattedPhone, amount },
+        'STK Push payment initiated successfully'
       );
 
       return {
-        checkoutRequestId: transactionId,
-        message: 'Payment request sent. Please complete the M-Pesa transaction on your phone.',
+        success: true,
+        message: 'STK Push sent to your phone. Complete the M-Pesa transaction to activate subscription.',
+        checkoutRequestId,
       };
     } catch (error: any) {
       app.logger.error(
         { err: error, providerId, errorMessage: error.message },
         'Unexpected error during M-Pesa payment initiation'
       );
-      return reply.status(500).send({ error: 'Failed to initiate payment. Please try again.' });
+      return reply.status(500).send({
+        success: false,
+        message: 'Failed to initiate payment. Please try again.'
+      });
     }
   });
 
   // POST /api/mpesa/callback
   fastify.post('/api/mpesa/callback', {
     schema: {
-      description: 'M-Pesa payment callback',
+      description: 'M-Pesa STK Push payment callback',
       tags: ['mpesa'],
       body: {
         type: 'object',
@@ -277,13 +302,13 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
     reply: FastifyReply
   ) => {
     const body = request.body as Record<string, any>;
-    app.logger.info({ body }, 'M-Pesa callback received');
+    app.logger.info({ callbackType: 'stk_push' }, 'M-Pesa callback received');
 
     try {
       const callbackData = body.Body?.stkCallback;
 
       if (!callbackData) {
-        app.logger.warn({}, 'Invalid callback structure');
+        app.logger.warn({}, 'Invalid callback structure - missing stkCallback');
         return reply.status(200).send({
           ResultCode: 1,
           ResultDesc: 'Invalid callback',
@@ -297,6 +322,11 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
         CallbackMetadata,
       } = callbackData;
 
+      app.logger.info(
+        { checkoutRequestId: CheckoutRequestID, resultCode: ResultCode },
+        'STK Push callback details'
+      );
+
       // Find transaction
       const transaction = await app.db
         .select()
@@ -304,7 +334,7 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
         .where(eq(schema.mpesaTransactions.checkoutRequestId, CheckoutRequestID));
 
       if (transaction.length === 0) {
-        app.logger.warn({ checkoutRequestId: CheckoutRequestID }, 'Transaction not found');
+        app.logger.warn({ checkoutRequestId: CheckoutRequestID }, 'Transaction not found for callback');
         return reply.status(200).send({
           ResultCode: 1,
           ResultDesc: 'Transaction not found',
@@ -317,6 +347,10 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
       if (ResultCode === 0) {
         const mpesaReceiptNumber = CallbackMetadata?.Item?.find(
           (item: any) => item.Name === 'MpesaReceiptNumber'
+        )?.Value;
+
+        const amount = CallbackMetadata?.Item?.find(
+          (item: any) => item.Name === 'Amount'
         )?.Value;
 
         // Update transaction
@@ -342,8 +376,13 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
           .where(eq(schema.serviceProviders.id, txn.providerId));
 
         app.logger.info(
-          { providerId: txn.providerId, mpesaReceiptNumber, expiresAt: subscriptionExpiresAt },
-          'Subscription activated successfully'
+          {
+            providerId: txn.providerId,
+            mpesaReceiptNumber,
+            amount,
+            expiresAt: subscriptionExpiresAt,
+          },
+          'Subscription activated successfully via STK Push'
         );
       } else {
         // Payment failed
@@ -356,8 +395,13 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
           .where(eq(schema.mpesaTransactions.id, txn.id));
 
         app.logger.warn(
-          { providerId: txn.providerId, resultCode: ResultCode, resultDesc: ResultDesc },
-          'Payment failed'
+          {
+            providerId: txn.providerId,
+            checkoutRequestId: CheckoutRequestID,
+            resultCode: ResultCode,
+            resultDesc: ResultDesc,
+          },
+          'STK Push payment failed'
         );
       }
 
@@ -367,7 +411,7 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
         ResultDesc: 'Callback processed successfully',
       });
     } catch (error) {
-      app.logger.error({ err: error }, 'Error processing M-Pesa callback');
+      app.logger.error({ err: error }, 'Error processing M-Pesa STK Push callback');
       return reply.status(200).send({
         ResultCode: 1,
         ResultDesc: 'Error processing callback',
