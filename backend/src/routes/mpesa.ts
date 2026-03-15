@@ -4,311 +4,288 @@ import axios from 'axios';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 
-// M-Pesa configuration constants
-const SUBSCRIPTION_AMOUNT = 130;
+// Build Nairobi timestamp in format YYYYMMDDHHmmss
+function getNairobiTimestamp(): string {
+  const nairobiOffset = 3 * 60 * 60 * 1000;
+  const nairobiDate = new Date(Date.now() + nairobiOffset);
 
-// M-Pesa API URLs (Production Go-Live)
-const AUTH_URL = 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
-const C2B_REGISTER_URL = 'https://api.safaricom.co.ke/mpesa/c2b/v2/registerurl';
-const STK_PUSH_URL = 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
-const TRANSACTION_STATUS_URL = 'https://api.safaricom.co.ke/mpesa/transactionstatus/v1/query';
+  const year = nairobiDate.getUTCFullYear();
+  const month = String(nairobiDate.getUTCMonth() + 1).padStart(2, '0');
+  const date = String(nairobiDate.getUTCDate()).padStart(2, '0');
+  const hours = String(nairobiDate.getUTCHours()).padStart(2, '0');
+  const minutes = String(nairobiDate.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(nairobiDate.getUTCSeconds()).padStart(2, '0');
 
-// Get M-Pesa access token
-async function getMpesaAccessToken(consumerKey: string, consumerSecret: string): Promise<string> {
-  try {
-    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
-    const response = await axios.get(AUTH_URL, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-      },
-    });
-
-    return response.data.access_token;
-  } catch (error: any) {
-    throw error;
-  }
-}
-
-// Generate timestamp in format YYYYMMDDHHmmss
-function getTimestamp(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const date = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
   return `${year}${month}${date}${hours}${minutes}${seconds}`;
 }
 
-// Generate password for M-Pesa
-function generatePassword(shortcode: string, passkey: string, timestamp: string): string {
-  const str = shortcode + passkey + timestamp;
-  return Buffer.from(str).toString('base64');
+// Normalize phone number to 254XXXXXXXXX format
+function normalizePhoneNumber(phoneNumber: string): string {
+  // Remove all non-digits
+  let normalized = phoneNumber.replace(/\D/g, '');
+
+  // If starts with 254, return as-is
+  if (normalized.startsWith('254')) {
+    return normalized;
+  }
+
+  // If starts with 0, replace with 254
+  if (normalized.startsWith('0')) {
+    return '254' + normalized.substring(1);
+  }
+
+  // Otherwise, prepend 254
+  return '254' + normalized;
 }
 
 export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
-  // POST /api/mpesa/subscribe
-  fastify.post('/api/mpesa/subscribe', {
+  // POST /api/mpesa/initiate
+  fastify.post('/api/mpesa/initiate', {
     schema: {
-      description: 'Initiate M-Pesa STK Push for subscription payment',
+      description: 'Initiate M-Pesa STK Push payment',
       tags: ['mpesa'],
       body: {
         type: 'object',
-        required: ['providerId'],
+        required: ['providerId', 'phoneNumber'],
         properties: {
           providerId: { type: 'string' },
-          amount: { type: 'number', default: SUBSCRIPTION_AMOUNT },
+          phoneNumber: { type: 'string' },
         },
       },
       response: {
         200: {
-          description: 'STK Push initiated successfully',
+          description: 'STK Push initiated',
           type: 'object',
           properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
             checkoutRequestId: { type: 'string' },
-          },
-        },
-        400: {
-          type: 'object',
-          properties: {
-            error: { type: 'string' },
+            merchantRequestId: { type: 'string' },
+            message: { type: 'string' },
           },
         },
         502: {
           type: 'object',
-          properties: {
-            error: { type: 'string' },
-          },
+          properties: { error: { type: 'string' } },
         },
         503: {
           type: 'object',
-          properties: {
-            error: { type: 'string' },
-          },
+          properties: { error: { type: 'string' } },
         },
       },
     },
   }, async (
     request: FastifyRequest<{
-      Body: { providerId: string; amount?: number };
+      Body: { providerId: string; phoneNumber: string };
     }>,
     reply: FastifyReply
   ) => {
-    // Validate required env vars
+    // Validate env vars
     const requiredEnvVars = [
       'MPESA_CONSUMER_KEY',
       'MPESA_CONSUMER_SECRET',
-      'MPESA_SHORTCODE',
       'MPESA_PASSKEY',
+      'MPESA_SHORTCODE',
       'MPESA_CALLBACK_URL',
     ];
 
-    const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-    if (missingEnvVars.length > 0) {
-      app.logger.warn({ missingEnvVars }, 'M-Pesa configuration incomplete');
-      return reply.status(503).send({
-        error: 'M-Pesa payment service is not configured. Please contact support.',
-      });
+    for (const envVar of requiredEnvVars) {
+      if (!process.env[envVar]) {
+        app.logger.warn({ missingEnv: envVar }, 'M-Pesa env var missing');
+        return reply.status(503).send({
+          error: 'M-Pesa payment service is not configured.',
+        });
+      }
     }
 
     const consumerKey = process.env.MPESA_CONSUMER_KEY!;
     const consumerSecret = process.env.MPESA_CONSUMER_SECRET!;
-    const shortCode = process.env.MPESA_SHORTCODE!;
     const passKey = process.env.MPESA_PASSKEY!;
-    const callbackUrlFromEnv = process.env.MPESA_CALLBACK_URL!;
+    const shortCode = process.env.MPESA_SHORTCODE!;
+    const callbackUrl = process.env.MPESA_CALLBACK_URL!;
 
-    const { providerId, amount = SUBSCRIPTION_AMOUNT } = request.body;
+    const { providerId, phoneNumber } = request.body;
 
-    // Request logging
-    app.logger.info({ providerId }, 'M-Pesa initiate request received');
+    app.logger.info(
+      { providerId, phoneNumber },
+      'M-Pesa initiate request received'
+    );
 
     try {
-      // Verify provider exists and get phone number
-      const provider = await app.db
-        .select()
-        .from(schema.serviceProviders)
-        .where(eq(schema.serviceProviders.id, providerId));
+      // Normalize phone number
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      app.logger.info(
+        { original: phoneNumber, normalized: normalizedPhone },
+        'Phone number normalized'
+      );
 
-      if (provider.length === 0) {
-        app.logger.warn({ providerId }, 'Provider not found');
-        return reply.status(400).send({
-          error: 'Provider not found',
-        });
-      }
+      // Get OAuth token
+      app.logger.info(
+        { url: 'https://api.safaricom.co.ke/oauth/v1/generate' },
+        'Requesting M-Pesa OAuth token'
+      );
 
-      const phoneNumber = provider[0].phoneNumber;
-      if (!phoneNumber) {
-        app.logger.warn({ providerId }, 'Provider has no phone number');
-        return reply.status(400).send({
-          error: 'Provider phone number not found',
-        });
-      }
-
-      // Format and validate phone number: must be exactly 12 digits starting with 254
-      let formattedPhone = phoneNumber.replace(/\D/g, '');
-      if (!formattedPhone.startsWith('254')) {
-        if (formattedPhone.startsWith('0')) {
-          formattedPhone = '254' + formattedPhone.substring(1);
-        } else {
-          formattedPhone = '254' + formattedPhone;
-        }
-      }
-
-      // Validate phone number format: exactly 12 digits, starts with 254
-      if (!/^254\d{9}$/.test(formattedPhone)) {
-        app.logger.warn({ phoneNumber, formattedPhone }, 'Invalid phone number format');
-        return reply.status(400).send({
-          error: 'Invalid phone number. Must be in format 254XXXXXXXXX',
-        });
-      }
-
-      // Get M-Pesa access token
-      let accessToken: string;
+      const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+      let tokenResponse;
       try {
-        accessToken = await getMpesaAccessToken(consumerKey, consumerSecret);
-      } catch (tokenError: any) {
+        tokenResponse = await axios.get(
+          'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+          {
+            headers: {
+              Authorization: `Basic ${auth}`,
+            },
+          }
+        );
+      } catch (error: any) {
         app.logger.error(
-          { err: tokenError, providerId },
-          'Failed to get M-Pesa access token'
+          { err: error, response: error.response?.data },
+          'Failed to get M-Pesa OAuth token'
         );
         return reply.status(502).send({
-          error: 'Failed to connect to M-Pesa. Please try again later.',
+          error: `M-Pesa error: Failed to authenticate`,
         });
       }
 
-      const timestamp = getTimestamp();
-      const password = generatePassword(shortCode, passKey, timestamp);
-      const merchantRequestId = `MR-${Date.now()}-${providerId}`;
+      const accessToken = tokenResponse.data.access_token;
+      app.logger.info(
+        { token: accessToken.substring(0, 20) + '...' },
+        'OAuth token received'
+      );
 
-      // Build STK Push request
+      // Build timestamp
+      const timestamp = getNairobiTimestamp();
+      app.logger.info({ timestamp }, 'Nairobi timestamp built');
+
+      // Build password
+      const passwordString = `${shortCode}${passKey}${timestamp}`;
+      const password = Buffer.from(passwordString).toString('base64');
+      app.logger.debug({ passwordString, password }, 'Password generated');
+
+      // Build STK Push payload
       const stkPayload = {
         BusinessShortCode: shortCode,
         Password: password,
         Timestamp: timestamp,
         TransactionType: 'CustomerPayBillOnline',
-        Amount: amount.toString(),
-        PartyA: formattedPhone,
+        Amount: '130',
+        PartyA: normalizedPhone,
         PartyB: shortCode,
-        PhoneNumber: formattedPhone,
-        CallBackURL: callbackUrlFromEnv,
-        AccountReference: `Collarless-${providerId}`,
-        TransactionDesc: 'Subscription payment',
+        PhoneNumber: normalizedPhone,
+        CallBackURL: callbackUrl,
+        AccountReference: 'NYOTA-KE',
+        TransactionDesc: 'Monthly Subscription',
       };
 
       app.logger.info(
         {
           shortCode,
-          amount,
-          msisdn: formattedPhone,
-          callbackUrl: callbackUrlFromEnv,
-          accountRef: `Collarless-${providerId}`,
+          amount: 130,
+          phone: normalizedPhone,
+          callbackUrl,
         },
-        'M-Pesa STK Push request prepared'
+        'STK Push payload prepared'
+      );
+      app.logger.debug({ payload: stkPayload }, 'Full STK Push payload');
+
+      // Send STK Push request
+      app.logger.info(
+        { url: 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest' },
+        'Sending STK Push request'
       );
 
-      // Initiate STK Push
       let stkResponse;
       try {
-        app.logger.info(
+        stkResponse = await axios.post(
+          'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+          stkPayload,
           {
-            url: STK_PUSH_URL,
-            amount,
-            phoneNumber: formattedPhone,
-          },
-          'Sending STK Push request to M-Pesa'
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
         );
-
-        stkResponse = await axios.post(STK_PUSH_URL, stkPayload, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        const responseCode = stkResponse.data?.ResponseCode;
-        if (responseCode !== '0') {
-          throw new Error(`M-Pesa returned non-zero response code: ${responseCode}`);
-        }
-
-        app.logger.info(
-          {
-            status: stkResponse.status,
-            responseCode: stkResponse.data?.ResponseCode,
-            responseDescription: stkResponse.data?.ResponseDescription,
-            checkoutRequestId: stkResponse.data?.CheckoutRequestID,
-            merchantRequestId: stkResponse.data?.MerchantRequestID,
-          },
-          'M-Pesa STK Push response received'
-        );
-      } catch (stkError: any) {
+      } catch (error: any) {
+        const errorMsg =
+          error.response?.data?.errorMessage ||
+          error.response?.data?.ResponseDescription ||
+          error.message;
         app.logger.error(
           {
-            err: stkError,
-            providerId,
-            phoneNumber: formattedPhone,
-            httpStatus: stkError.response?.status,
-            mpesaError: stkError.response?.data,
+            err: error,
+            response: error.response?.data,
+            status: error.response?.status,
           },
-          'M-Pesa STK Push API request failed'
+          'STK Push request failed'
         );
-
         return reply.status(502).send({
-          error: 'M-Pesa STK push failed. Please check your phone number and try again.',
+          error: `M-Pesa error: ${errorMsg}`,
+        });
+      }
+
+      app.logger.info(
+        {
+          status: stkResponse.status,
+          responseCode: stkResponse.data?.ResponseCode,
+          responseDesc: stkResponse.data?.ResponseDescription,
+          checkoutRequestId: stkResponse.data?.CheckoutRequestID,
+          merchantRequestId: stkResponse.data?.MerchantRequestID,
+        },
+        'STK Push response received'
+      );
+
+      // Check response code
+      if (stkResponse.data?.ResponseCode !== '0') {
+        const errorMsg = stkResponse.data?.ResponseDescription || 'Unknown error';
+        app.logger.warn(
+          { responseCode: stkResponse.data?.ResponseCode },
+          'STK Push returned error code'
+        );
+        return reply.status(502).send({
+          error: `M-Pesa error: ${errorMsg}`,
         });
       }
 
       const checkoutRequestId = stkResponse.data.CheckoutRequestID;
+      const merchantRequestId = stkResponse.data.MerchantRequestID;
 
-      if (!checkoutRequestId) {
-        app.logger.error(
-          { responseData: stkResponse.data },
-          'M-Pesa response missing CheckoutRequestID'
-        );
-        return reply.status(502).send({
-          error: 'M-Pesa STK push failed. Please check your phone number and try again.',
-        });
-      }
+      // Save transaction
+      app.logger.info(
+        { providerId, checkoutRequestId, merchantRequestId },
+        'Saving transaction record'
+      );
 
-      // Store transaction record
       await app.db.insert(schema.mpesaTransactions).values({
         providerId,
-        merchantRequestId: stkResponse.data.MerchantRequestID,
+        phoneNumber: normalizedPhone,
         checkoutRequestId,
-        phoneNumber: formattedPhone,
-        amount,
+        merchantRequestId,
+        amount: 130,
         status: 'pending',
       });
 
       app.logger.info(
-        { providerId, checkoutRequestId, phoneNumber: formattedPhone, amount },
-        'STK Push payment initiated successfully'
+        { checkoutRequestId, providerId },
+        'Transaction saved successfully'
       );
 
-      return {
-        success: true,
-        message: 'STK Push sent to your phone. Complete the M-Pesa transaction to activate subscription.',
+      return reply.status(200).send({
         checkoutRequestId,
-      };
+        merchantRequestId,
+        message: 'Please check your phone for the M-Pesa prompt.',
+      });
     } catch (error: any) {
-      app.logger.error(
-        { err: error, providerId, errorMessage: error.message },
-        'Unexpected error during M-Pesa payment initiation'
-      );
-      throw error;
+      app.logger.error({ err: error }, 'Unexpected error in M-Pesa initiate');
+      return reply.status(500).send({
+        error: 'An unexpected error occurred',
+      });
     }
   });
 
   // POST /api/mpesa/callback
   fastify.post('/api/mpesa/callback', {
     schema: {
-      description: 'M-Pesa STK Push payment callback',
+      description: 'M-Pesa callback endpoint',
       tags: ['mpesa'],
-      body: {
-        type: 'object',
-      },
+      body: { type: 'object' },
       response: {
         200: {
           type: 'object',
@@ -324,13 +301,13 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
     reply: FastifyReply
   ) => {
     const body = request.body as Record<string, any>;
-    app.logger.info({ callbackType: 'stk_push' }, 'M-Pesa callback received');
+    app.logger.info({ body }, 'M-Pesa callback received');
 
     try {
-      const callbackData = body.Body?.stkCallback;
+      const stkCallback = body.Body?.stkCallback;
 
-      if (!callbackData) {
-        app.logger.warn({}, 'Invalid callback structure - missing stkCallback');
+      if (!stkCallback) {
+        app.logger.warn({}, 'Invalid callback structure');
         return reply.status(200).send({
           ResultCode: 1,
           ResultDesc: 'Invalid callback',
@@ -338,105 +315,114 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
       }
 
       const {
+        MerchantRequestID,
         CheckoutRequestID,
         ResultCode,
         ResultDesc,
         CallbackMetadata,
-      } = callbackData;
+      } = stkCallback;
 
       app.logger.info(
-        { checkoutRequestId: CheckoutRequestID, resultCode: ResultCode },
-        'STK Push callback details'
+        {
+          checkoutRequestId: CheckoutRequestID,
+          resultCode: ResultCode,
+          resultDesc: ResultDesc,
+        },
+        'Callback data extracted'
       );
 
-      // Find transaction
-      const transaction = await app.db
-        .select()
-        .from(schema.mpesaTransactions)
-        .where(eq(schema.mpesaTransactions.checkoutRequestId, CheckoutRequestID));
-
-      if (transaction.length === 0) {
-        app.logger.warn({ checkoutRequestId: CheckoutRequestID }, 'Transaction not found for callback');
-        return reply.status(200).send({
-          ResultCode: 1,
-          ResultDesc: 'Transaction not found',
-        });
-      }
-
-      const txn = transaction[0];
-
-      // Handle successful payment
       if (ResultCode === 0) {
+        // Success - extract receipt number
         const mpesaReceiptNumber = CallbackMetadata?.Item?.find(
           (item: any) => item.Name === 'MpesaReceiptNumber'
         )?.Value;
 
-        const amount = CallbackMetadata?.Item?.find(
-          (item: any) => item.Name === 'Amount'
-        )?.Value;
+        app.logger.info(
+          {
+            checkoutRequestId: CheckoutRequestID,
+            receiptNumber: mpesaReceiptNumber,
+          },
+          'Payment successful'
+        );
 
         // Update transaction
-        await app.db
+        const updated = await app.db
           .update(schema.mpesaTransactions)
           .set({
             status: 'completed',
             mpesaReceiptNumber,
-            resultDesc: ResultDesc,
           })
-          .where(eq(schema.mpesaTransactions.id, txn.id));
+          .where(
+            eq(
+              schema.mpesaTransactions.checkoutRequestId,
+              CheckoutRequestID
+            )
+          )
+          .returning();
 
-        // Update provider subscription
-        const subscriptionExpiresAt = new Date();
-        subscriptionExpiresAt.setDate(subscriptionExpiresAt.getDate() + 30);
+        if (updated.length > 0) {
+          const txn = updated[0];
+          const providerId = txn.providerId;
 
-        await app.db
-          .update(schema.serviceProviders)
-          .set({
-            subscriptionStatus: 'active',
-            subscriptionExpiresAt,
-          })
-          .where(eq(schema.serviceProviders.id, txn.providerId));
+          app.logger.info(
+            { providerId },
+            'Transaction updated, updating provider subscription'
+          );
 
-        app.logger.info(
-          {
-            providerId: txn.providerId,
-            mpesaReceiptNumber,
-            amount,
-            expiresAt: subscriptionExpiresAt,
-          },
-          'Subscription activated successfully via STK Push'
-        );
+          // Update provider subscription
+          const thirtyDaysFromNow = new Date();
+          thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+          await app.db
+            .update(schema.serviceProviders)
+            .set({
+              subscriptionStatus: 'active',
+              subscriptionExpiresAt: thirtyDaysFromNow,
+            })
+            .where(eq(schema.serviceProviders.id, providerId));
+
+          app.logger.info(
+            {
+              providerId,
+              expiresAt: thirtyDaysFromNow,
+            },
+            'Provider subscription activated'
+          );
+        }
       } else {
-        // Payment failed
+        // Failure
+        app.logger.warn(
+          {
+            checkoutRequestId: CheckoutRequestID,
+            resultCode: ResultCode,
+          },
+          'Payment failed'
+        );
+
         await app.db
           .update(schema.mpesaTransactions)
           .set({
             status: 'failed',
             resultDesc: ResultDesc,
           })
-          .where(eq(schema.mpesaTransactions.id, txn.id));
-
-        app.logger.warn(
-          {
-            providerId: txn.providerId,
-            checkoutRequestId: CheckoutRequestID,
-            resultCode: ResultCode,
-            resultDesc: ResultDesc,
-          },
-          'STK Push payment failed'
-        );
+          .where(
+            eq(
+              schema.mpesaTransactions.checkoutRequestId,
+              CheckoutRequestID
+            )
+          );
       }
 
-      // Return success to M-Pesa
+      // Always return success to Safaricom
       return reply.status(200).send({
         ResultCode: 0,
-        ResultDesc: 'Callback processed successfully',
+        ResultDesc: 'Accepted',
       });
     } catch (error: any) {
-      app.logger.error({ err: error }, 'Error processing M-Pesa STK Push callback');
+      app.logger.error({ err: error }, 'Error processing callback');
       return reply.status(200).send({
-        ResultCode: 1,
-        ResultDesc: 'Error processing callback',
+        ResultCode: 0,
+        ResultDesc: 'Accepted',
       });
     }
   });
@@ -457,11 +443,9 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
-            checkoutRequestId: { type: 'string' },
             status: { type: 'string' },
-            mpesaReceiptNumber: { type: 'string' },
             resultDesc: { type: 'string' },
+            receiptNumber: { type: 'string' },
           },
         },
         404: {
@@ -475,43 +459,44 @@ export function registerMpesaRoutes(app: App, fastify: FastifyInstance) {
     reply: FastifyReply
   ) => {
     const { checkoutRequestId } = request.params;
-    app.logger.info({ checkoutRequestId }, 'Fetching M-Pesa transaction status');
+
+    app.logger.info({ checkoutRequestId }, 'Status query received');
 
     try {
       const transaction = await app.db
         .select()
         .from(schema.mpesaTransactions)
-        .where(eq(schema.mpesaTransactions.checkoutRequestId, checkoutRequestId));
+        .where(
+          eq(
+            schema.mpesaTransactions.checkoutRequestId,
+            checkoutRequestId
+          )
+        );
 
       if (transaction.length === 0) {
         app.logger.warn({ checkoutRequestId }, 'Transaction not found');
-        return reply.status(404).send({ error: 'Transaction not found' });
+        return reply.status(404).send({
+          error: 'Transaction not found',
+        });
       }
 
       const txn = transaction[0];
-      app.logger.info({ checkoutRequestId, status: txn.status }, 'Transaction status retrieved');
+      app.logger.info(
+        {
+          checkoutRequestId,
+          status: txn.status,
+        },
+        'Transaction status retrieved'
+      );
 
-      return {
-        id: txn.id,
-        checkoutRequestId: txn.checkoutRequestId,
+      return reply.status(200).send({
         status: txn.status,
-        mpesaReceiptNumber: txn.mpesaReceiptNumber || null,
         resultDesc: txn.resultDesc || null,
-      };
-    } catch (error) {
-      app.logger.error({ err: error, checkoutRequestId }, 'Failed to fetch transaction status');
+        receiptNumber: txn.mpesaReceiptNumber || null,
+      });
+    } catch (error: any) {
+      app.logger.error({ err: error }, 'Error fetching transaction status');
       throw error;
     }
-  });
-
-  // Error handler for M-Pesa routes
-  fastify.setErrorHandler(async (error: any, request, reply) => {
-    if (request.url.startsWith('/api/mpesa')) {
-      app.logger.error({ err: error, path: request.url }, 'Unhandled error in M-Pesa route');
-      return reply.status(500).send({
-        error: error?.message || 'Internal server error',
-      });
-    }
-    throw error;
   });
 }
