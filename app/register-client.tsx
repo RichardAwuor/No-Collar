@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
+// Alert kept for client-side validation errors (missing fields, invalid email)
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +43,7 @@ export default function RegisterClientScreen() {
   const [lastName, setLastName] = useState('');
   const [selectedCounty, setSelectedCounty] = useState(COUNTIES[46].countyCode);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const emailTrimmed = email.trim().toLowerCase();
   const confirmEmailTrimmed = confirmEmail.trim().toLowerCase();
@@ -73,6 +75,7 @@ export default function RegisterClientScreen() {
     }
 
     setEmailMismatch(false);
+    setSubmitError(null);
     setLoading(true);
 
     const BASE_URL = 'https://9rs686wkexp8cbxgtddvuzrpcv4x9xn8.app.specular.dev';
@@ -116,12 +119,12 @@ export default function RegisterClientScreen() {
         return;
       }
 
-      const msg: string = data.message || data.error || `Server error ${response.status}`;
+      const msg: string = data.error || data.message || `Registration failed (${response.status}). Please try again.`;
       console.log('Registration failed:', response.status, msg);
-      Alert.alert('Registration Failed', msg);
+      setSubmitError(msg);
     } catch (networkErr: any) {
       console.log('Network error:', networkErr);
-      Alert.alert('Connection Error', 'Please check your internet connection and try again.');
+      setSubmitError('Unable to connect. Please check your internet connection.');
     } finally {
       setLoading(false);
     }
@@ -199,6 +202,13 @@ export default function RegisterClientScreen() {
           </Picker>
         </View>
 
+        {submitError !== null && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={18} color="#B71C1C" style={{ marginRight: 8, marginTop: 1 }} />
+            <Text style={styles.errorBannerText}>{submitError}</Text>
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleRegister}
@@ -247,4 +257,15 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFEBEE',
+    borderWidth: 1,
+    borderColor: '#EF9A9A',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 20,
+  },
+  errorBannerText: { flex: 1, color: '#B71C1C', fontSize: 14, lineHeight: 20 },
 });
