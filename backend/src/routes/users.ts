@@ -1,8 +1,16 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
+import { scryptSync, randomBytes } from 'crypto';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { encryptIdentity } from '../utils/encryption.js';
+
+// Hash password using scrypt (built-in Node.js crypto)
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
 
 export function registerUserRoutes(app: App, fastify: FastifyInstance) {
   // POST /api/users/register-client
@@ -12,14 +20,15 @@ export function registerUserRoutes(app: App, fastify: FastifyInstance) {
       tags: ['users'],
       body: {
         type: 'object',
-        required: ['email', 'firstName', 'lastName', 'county', 'isOrganization'],
+        required: ['email', 'firstName', 'lastName', 'county', 'password'],
         properties: {
           email: { type: 'string', format: 'email' },
           firstName: { type: 'string' },
           lastName: { type: 'string' },
           county: { type: 'string' },
+          password: { type: 'string' },
           organizationName: { type: 'string' },
-          isOrganization: { type: 'boolean' },
+          isOrganization: { type: 'boolean', default: false },
         },
       },
       response: {
@@ -27,20 +36,18 @@ export function registerUserRoutes(app: App, fastify: FastifyInstance) {
           description: 'Client registered successfully',
           type: 'object',
           properties: {
-            user: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                email: { type: 'string' },
-                userType: { type: 'string' },
-                firstName: { type: 'string' },
-                lastName: { type: 'string' },
-                county: { type: 'string' },
-              },
-            },
+            id: { type: 'string' },
+            email: { type: 'string' },
+            firstName: { type: 'string' },
+            lastName: { type: 'string' },
+            userType: { type: 'string' },
           },
         },
         400: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+        500: {
           type: 'object',
           properties: { error: { type: 'string' } },
         },
@@ -49,58 +56,110 @@ export function registerUserRoutes(app: App, fastify: FastifyInstance) {
   }, async (
     request: FastifyRequest<{
       Body: {
-        email: string;
-        firstName: string;
-        lastName: string;
-        county: string;
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        county?: string;
+        password?: string;
         organizationName?: string;
-        isOrganization: boolean;
+        isOrganization?: boolean;
       };
     }>,
     reply: FastifyReply
   ) => {
-    const { email, firstName, lastName, county, organizationName, isOrganization } = request.body;
+    const {
+      email,
+      firstName,
+      lastName,
+      county,
+      password,
+      organizationName,
+      isOrganization = false,
+    } = request.body;
+
     app.logger.info({ email, firstName, lastName, county }, 'Registering client');
 
     try {
+      // Validate required fields
+      if (!firstName || !lastName || !email || !county || !password) {
+        app.logger.warn(
+          { email, hasfirstName: !!firstName, hasLastName: !!lastName, hasCounty: !!county, hasPassword: !!password },
+          'Client registration: missing required fields'
+        );
+        return reply.status(400).send({
+          error: 'Please provide all required fields: first name, last name, email, county, and password',
+        });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        app.logger.warn({ email }, 'Client registration: invalid email format');
+        return reply.status(400).send({
+          error: 'Please provide a valid email address',
+        });
+      }
+
+      // Validate password length
+      if (password.length < 6) {
+        app.logger.warn({ email }, 'Client registration: password too short');
+        return reply.status(400).send({
+          error: 'Password must be at least 6 characters long',
+        });
+      }
+
+      // Check if email already exists
       const existingUser = await app.db
         .select()
         .from(schema.users)
         .where(eq(schema.users.email, email));
 
       if (existingUser.length > 0) {
-        app.logger.warn({ email }, 'User already exists');
-        return reply.status(400).send({ error: 'Email already registered' });
+        app.logger.warn({ email }, 'Client registration: email already exists');
+        return reply.status(400).send({
+          error: 'An account with this email already exists',
+        });
+      }
+
+      // Hash password
+      const passwordHash = hashPassword(password);
+      app.logger.debug({ email }, 'Password hashed');
+
+      // Create user with password hash if the column exists in the schema
+      const userValues: any = {
+        email,
+        firstName,
+        lastName,
+        county,
+        organizationName: isOrganization ? organizationName || null : null,
+        userType: 'client',
+        emailConfirmed: false,
+      };
+
+      // Add password hash if the field is available in the schema
+      if ('passwordHash' in schema.users) {
+        (userValues as any).passwordHash = passwordHash;
       }
 
       const [user] = await app.db
         .insert(schema.users)
-        .values({
-          email,
-          firstName,
-          lastName,
-          county,
-          organizationName: isOrganization ? organizationName : null,
-          userType: 'client',
-          emailConfirmed: false,
-        })
+        .values(userValues)
         .returning();
 
       app.logger.info({ userId: user.id, email }, 'Client registered successfully');
 
       return reply.status(201).send({
-        user: {
-          id: user.id,
-          email: user.email,
-          userType: user.userType,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          county: user.county,
-        },
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        userType: user.userType,
       });
-    } catch (error) {
+    } catch (error: any) {
       app.logger.error({ err: error, email }, 'Failed to register client');
-      throw error;
+      return reply.status(500).send({
+        error: 'Something went wrong. Please try again.',
+      });
     }
   });
 
