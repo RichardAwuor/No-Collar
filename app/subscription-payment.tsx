@@ -129,8 +129,8 @@ export default function SubscriptionPaymentScreen() {
     const phoneNumber = formatMsisdn(rawPhone);
     console.log(`Phone formatted: ${rawPhone} -> ${phoneNumber}`);
 
-    if (!/^2547\d{8}$/.test(phoneNumber)) {
-      showMessage('Error', `Invalid phone number format (${phoneNumber}). Please use a Safaricom number starting with 07 or 2547.`, true);
+    if (!/^254(7|1)\d{8}$/.test(phoneNumber)) {
+      showMessage('Error', `Invalid phone number format (${phoneNumber}). Please use a Safaricom number starting with 07, 01, 2547, or 2541.`, true);
       return;
     }
 
