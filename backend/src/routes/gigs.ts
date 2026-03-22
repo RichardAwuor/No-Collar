@@ -25,9 +25,9 @@ export function registerGigRoutes(app: App, fastify: FastifyInstance) {
       tags: ['gigs'],
       body: {
         type: 'object',
-        required: ['clientId', 'category', 'serviceDate', 'serviceTime', 'address', 'description', 'durationDays', 'durationHours', 'paymentOffer'],
+        required: ['clientId', 'category', 'serviceDate', 'serviceTime', 'address', 'durationHours', 'paymentOffer'],
         properties: {
-          clientId: { type: 'string' },
+          clientId: { type: 'string', format: 'uuid' },
           category: { type: 'string' },
           serviceDate: { type: 'string', format: 'date-time' },
           serviceTime: { type: 'string' },
@@ -49,8 +49,24 @@ export function registerGigRoutes(app: App, fastify: FastifyInstance) {
             id: { type: 'string' },
             clientId: { type: 'string' },
             category: { type: 'string' },
+            serviceDate: { type: 'string', format: 'date-time' },
+            serviceTime: { type: 'string' },
+            address: { type: 'string' },
+            description: { type: 'string' },
+            durationDays: { type: 'integer' },
+            durationHours: { type: 'integer' },
+            paymentOffer: { type: 'integer' },
             status: { type: 'string' },
+            createdAt: { type: 'string', format: 'date-time' },
           },
+        },
+        400: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+        404: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
         },
       },
     },
@@ -62,8 +78,8 @@ export function registerGigRoutes(app: App, fastify: FastifyInstance) {
         serviceDate: string;
         serviceTime: string;
         address: string;
-        description: string;
-        durationDays: number;
+        description?: string;
+        durationDays?: number;
         durationHours: number;
         preferredGender?: 'Male' | 'Female';
         paymentOffer: number;
@@ -77,111 +93,79 @@ export function registerGigRoutes(app: App, fastify: FastifyInstance) {
     app.logger.info({ clientId, category, paymentOffer }, 'Creating gig');
 
     try {
+      // Validate address length
       if (address.length > 30) {
         app.logger.warn({ clientId }, 'Address exceeds 30 characters');
         return reply.status(400).send({ error: 'Address must not exceed 30 characters' });
       }
 
-      if (description.length > 160) {
+      // Validate description length if provided
+      if (description && description.length > 160) {
         app.logger.warn({ clientId }, 'Description exceeds 160 characters');
         return reply.status(400).send({ error: 'Description must not exceed 160 characters' });
       }
 
-      // Get client location for matching
-      const client = await app.db
-        .select()
+      // Parse and validate serviceDate
+      let parsedDate: Date;
+      try {
+        parsedDate = new Date(serviceDate);
+        if (isNaN(parsedDate.getTime())) {
+          throw new Error('Invalid date');
+        }
+      } catch {
+        app.logger.warn({ clientId, serviceDate }, 'Invalid serviceDate format');
+        return reply.status(400).send({ error: 'Invalid serviceDate format. Must be ISO 8601 date string.' });
+      }
+
+      // Verify client exists
+      const clientExists = await app.db
+        .select({ id: schema.users.id })
         .from(schema.users)
         .where(eq(schema.users.id, clientId));
 
-      if (client.length === 0) {
+      if (clientExists.length === 0) {
         app.logger.warn({ clientId }, 'Client not found');
         return reply.status(404).send({ error: 'Client not found' });
       }
 
+      // Create gig
+      const gigValues = {
+        clientId,
+        category,
+        serviceDate: parsedDate,
+        serviceTime,
+        address,
+        description: description || '',
+        durationDays: durationDays ?? 0,
+        durationHours,
+        preferredGender: preferredGender || null,
+        paymentOffer,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        status: 'open',
+        selectionExpiresAt: new Date(Date.now() + 3 * 60 * 1000),
+      };
+
       const [gig] = await app.db
         .insert(schema.gigs)
-        .values({
-          clientId,
-          category,
-          serviceDate: new Date(serviceDate),
-          serviceTime,
-          address,
-          description,
-          durationDays,
-          durationHours,
-          preferredGender,
-          paymentOffer,
-          latitude: latitude ? String(latitude) : null,
-          longitude: longitude ? String(longitude) : null,
-          status: 'open',
-          selectionExpiresAt: new Date(Date.now() + 3 * 60 * 1000), // 3 minutes from now
-        })
+        .values(gigValues as any)
         .returning();
 
-      // Find matched providers (3-5 providers)
-      const allProviders = await app.db
-        .select()
-        .from(schema.serviceProviders)
-        .where(eq(schema.serviceProviders.subscriptionStatus, 'active'));
-
-      app.logger.debug({ gigId: gig.id, totalProviders: allProviders.length }, 'Fetching matched providers');
-
-      // Filter and score providers
-      const scoredProviders = allProviders
-        .map((provider) => {
-          let score = 0;
-
-          // Check if provider has this service category
-          if (!provider.latitude || !provider.longitude || !gig.latitude || !gig.longitude) {
-            return null; // Skip providers without location
-          }
-
-          const gigLat = parseFloat(gig.latitude as any);
-          const gigLon = parseFloat(gig.longitude as any);
-          const providerLat = parseFloat(provider.latitude as any);
-          const providerLon = parseFloat(provider.longitude as any);
-
-          const distance = calculateDistance(providerLat, providerLon, gigLat, gigLon);
-
-          // Distance scoring: closer is better
-          if (distance <= provider.commuteDistance) {
-            score += Math.max(0, 100 - distance * 10);
-          } else {
-            return null; // Provider's commute distance doesn't allow this gig
-          }
-
-          // Gender preference scoring
-          if (!gig.preferredGender || gig.preferredGender === provider.gender) {
-            score += 50;
-          }
-
-          return { provider, score, distance };
-        })
-        .filter((entry): entry is { provider: typeof allProviders[0]; score: number; distance: number } => entry !== null)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5); // Take top 5 matches
-
-      // Ensure minimum 3 providers
-      if (scoredProviders.length < 3) {
-        app.logger.warn({ gigId: gig.id, matched: scoredProviders.length }, 'Less than 3 matched providers found');
-      }
-
-      const matchedProviders = scoredProviders.slice(0, 5).map((entry) => ({
-        id: entry.provider.id,
-        firstName: entry.provider.userId, // We'll get the actual name via relation in client
-        gender: entry.provider.gender,
-        commuteDistance: entry.provider.commuteDistance,
-        distance: entry.distance,
-      }));
-
-      app.logger.info(
-        { gigId: gig.id, category, matchedCount: matchedProviders.length, selectionExpiresAt: gig.selectionExpiresAt },
-        'Gig created successfully with matched providers'
-      );
+      app.logger.info({ gigId: gig.id, clientId, category }, 'Gig created successfully');
 
       return reply.status(201).send({
-        ...gig,
-        matchedProviders,
+        id: gig.id,
+        clientId: gig.clientId,
+        category: gig.category,
+        serviceDate: gig.serviceDate,
+        serviceTime: gig.serviceTime,
+        address: gig.address,
+        description: gig.description,
+        durationDays: gig.durationDays,
+        durationHours: gig.durationHours,
+        paymentOffer: gig.paymentOffer,
+        status: gig.status,
+        createdAt: gig.createdAt,
       });
     } catch (error) {
       app.logger.error({ err: error, clientId }, 'Failed to create gig');
