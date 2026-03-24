@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M-Pesa Traffic Reports</title>
+</head>
+<body>
+    <h1>M-Pesa Traffic Reports</h1>
+    <button id="download-btn">Download M-Pesa Traffic Report</button>
+
+    <script>
+        document.getElementById('download-btn').addEventListener('click', function() {
+            // Fetch the CSV data
+            fetch('path_to_your_csv_file.csv')
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'mpesa_traffic_report.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(() => alert('Error downloading the report')); 
+        });
+    </script>
+</body>
+</html>
