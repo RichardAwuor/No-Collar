@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Nyota-KE",
-    "slug": "nyota",
+    "slug": "nyota-ke",
     "version": "1.0.39",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -51,7 +51,7 @@
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://mjadjyvq2z9f486kg35u347ns8bmsxs8.app.specular.dev",
+      "backendUrl": "https://prod-proj-2nybuz8fbmvczltakxgen-liwg5h36mq-ey.a.run.app",
       "mpesaShortCode": "4523859"
     }
   }
